@@ -1,0 +1,11 @@
+{
+  "dependencies": [
+    {
+      "name": "LuaJIT",
+      "url": "https://github.com/LuaJIT/LuaJIT.git",
+      "commit": "24c20c94e7db195b640854619577441f9b4bc6be",
+      "license": "MIT",
+      "purpose": "Compile the gameplay resource in non-GC64 mode"
+    }
+  ]
+}
