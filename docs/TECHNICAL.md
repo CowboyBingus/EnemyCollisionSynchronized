@@ -12,4 +12,4 @@ The current code does not directly patch damage callbacks. Reducing displaced co
 
 The public v2.6 name retains the existing manager GUID, `mods/cowboybingus/corpse_collision_repair` resource, `CorpseCollisionRepair` state and `CorpseCollisionRepair.log` filename for compatible upgrades. The gameplay source compiles to the same resource as the prepared local v2.6 release. Private session material is not distributed.
 
-Requires Bingus Shared Loader v8 or newer / API 1; the download includes v9 as a separate loader ZIP. Supported game fingerprints are pinned in `scripts/archive.py` for Steam build 24826606 / EXE 1.8.45317.0.
+Requires Bingus Shared Loader v8 or newer / API 1; download the loader separately from its own repository. Supported game fingerprints are pinned in `scripts/archive.py` for Steam build 24826606 / EXE 1.8.45317.0.

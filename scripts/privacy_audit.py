@@ -90,7 +90,10 @@ def audit(packages=(), history=False):
             assert git('show', ':' + name) == (ROOT / name).read_bytes(), 'Index differs from audit: ' + name
         for commit in git('rev-list', '--all').decode().splitlines():
             names = git('ls-tree', '-r', '--name-only', commit).decode().splitlines()
-            assert set(names) == set(allowed), 'Unexpected historical tree'
+            historical = json.loads(git('show', commit + ':publication-files.json'))
+            assert len(historical) == len(set(historical))
+            assert set(names) == set(historical), 'Unexpected historical tree'
+            assert set(historical) <= set(allowed), 'Unreviewed historical file'
             for name in names: inspect(git('show', commit + ':' + name), 'history/' + name)
             fields = git('show', '-s', '--format=%an%x00%ae%x00%cn%x00%ce%x00%B', commit).split(b'\0')
             assert fields[0] == fields[2] == b'CowboyBingus'

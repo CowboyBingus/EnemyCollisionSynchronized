@@ -13,4 +13,4 @@ Corpse bodies retain their normal physical collision. The changes run on your ga
 
 [Download v2.6](https://github.com/CowboyBingus/EnemyCollisionSynchronized/releases/tag/v2.6) · [Install](INSTALL.txt) · [Build](CONTRIBUTING.md)
 
-The release includes Bingus Shared Loader v9 as a separate ZIP. Enable the loader alongside this mod, or alongside Vanilla Plus Megapack.
+Download [Bingus Shared Loader v9 or newer](https://github.com/CowboyBingus/BingusSharedLoader/releases/latest) from its own repository. Enable the loader alongside this mod, or alongside Vanilla Plus Megapack.

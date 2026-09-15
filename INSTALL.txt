@@ -11,8 +11,9 @@ renewed ragdoll movement that can occur in vanilla.
    If first-mod priority is enabled, put it FIRST instead.
 5. Purge, then Deploy. Launch the game normally.
 
-Vanilla Plus Megapack megapack-v2 includes this mod. Use either the pack or
-its standalone gameplay packages, with one shared loader.
+Vanilla Plus Megapack v2 includes this mod. A current standalone copy can
+remain installed alongside the pack; duplicate callbacks do not stack. Give
+the pack winning priority to use its bundled version, with one shared loader.
 
 Corpse bodies retain their normal physical collision. The mod aligns displaced
 collision pieces, curbs renewed movement after remote corpses settle, and
@@ -20,7 +21,7 @@ removes lingering collision from settled Impaler tentacle claws.
 Compatible large enemies include Terminids, Automatons and Illuminate.
 
 Supported game: Steam build 24826606 / EXE 1.8.45317.0.
-Minimum shared loader: loader-v8 / API 1; loader-v9 is supplied alongside it.
+Minimum shared loader: loader-v8 / API 1; download loader-v9 or newer separately.
 
 To update, replace the ZIP, then Purge / Deploy. To remove, disable it and
 Purge / Deploy. Keep the loader enabled if other dependent mods remain.
