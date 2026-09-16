@@ -45,13 +45,21 @@ return function(create_api,patch,build)
         return g,e
     end)
     if not ok then report(tostring(game),false,true);return end
+    local profiler=patch.profiler and patch.profiler.new(api,build.revision)
+    api.profiler=profiler
     local previous,previous_shutdown,stopped=update,shutdown,false
     local next_poll=0
     local function check()
         if stopped then return end
         local now=api.time();if now<next_poll then return end
         next_poll=now+patch.interval;state.polls=state.polls+1
+        if profiler then profiler.begin() end
         local called,accepted,reason,active=pcall(patch.apply,api,game,exe,state)
+        if profiler then
+            state.read_calls=profiler.reads-profiler.read_start
+            state.read_bytes=profiler.bytes-profiler.byte_start
+            profiler.phase('logging')
+        end
         if not called then
             -- Loading/despawn can invalidate a sequential snapshot. Retry on
             -- the next poll; no cached addresses or pending writes survive it.
@@ -60,6 +68,7 @@ return function(create_api,patch,build)
         elseif not accepted then
             stopped=true;report(tostring(reason),false,true)
         else report(reason,active==true) end
+        if profiler then profiler.finish(state);profiler.flush(state) end
     end
     local function after(called,...)
         if not called then
@@ -69,10 +78,12 @@ return function(create_api,patch,build)
     end
     update=function(...)
         state.updates=state.updates+1
+        if profiler then profiler.updates=profiler.updates+1 end
         return after(pcall(previous,...))
     end
     shutdown=function(...)
         stopped=true;state.native=nil;report('stopped',false,true)
+        if profiler then profiler.flush(state,true) end
         if previous_shutdown then return previous_shutdown(...) end
     end
     report('waiting_for_mission',false,true)

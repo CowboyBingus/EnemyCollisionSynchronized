@@ -12,7 +12,7 @@ from package import package_release
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULE = 'mods/cowboybingus/corpse_collision_repair'
-REVISION = 'v2.6'
+REVISION = 'v2.7'
 
 
 def run(args, **kwargs):
@@ -43,6 +43,8 @@ def main():
     tests += run([LUA, ROOT / 'tests/test_settlement.lua', ROOT / 'src'], env=env)
     tests += run([LUA, ROOT / 'tests/test_completion.lua', ROOT / 'src'], env=env)
     tests += run([LUA, ROOT / 'tests/test_loader.lua', ROOT / 'src'], env=env)
+    tests += run([LUA, ROOT / 'tests/test_performance.lua', ROOT / 'src', ROOT / 'tests'], env=env)
+    tests += run([LUA, ROOT / 'tests/test_profiler.lua', ROOT / 'src'], env=env)
     (build / ARCHIVE).write_bytes(make_archive(resources))
     for suffix in ('.stream', '.gpu_resources'):
         (build / (ARCHIVE + suffix)).write_bytes(b'')
@@ -85,6 +87,9 @@ def main():
                          'landed_disabled_seconds': 1, 'landed_disabled_minimum_samples': 3,
                          'rewinds_pose': False, 'changes_main_collision': False},
         'contact_damage_verified': False,
+        'performance': {'soft_poll_budget_ms': 1, 'entity_headers_per_poll': 128,
+                        'deep_inspections_per_poll': 4, 'fresh_unit_before_mutation': True,
+                        'profiler': 'automatic aggregate phases; sampled read timings; output every 10 seconds'},
         'offline_tests': tests.strip(),
         'source_sha256': {p.relative_to(ROOT).as_posix(): sha(p.read_bytes())
                           for folder in ('src', 'scripts', 'tests', 'profiles') for p in (ROOT / folder).rglob('*')

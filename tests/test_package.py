@@ -15,13 +15,16 @@ with zipfile.ZipFile(sys.argv[1]) as package:
     expected |= {'manifest.json', 'thumbnail.png', 'EnemyCollisionSynchronized-manifest.json', 'EnemyCollisionSynchronized-README.txt'}
     assert set(names) == expected and len(names) == len(expected)
     manager = json.loads(package.read('manifest.json'))
-    assert manager['Name'] == 'Enemy Collision Synchronized - v2.6' and manager['Options'][0]['Include'] == ['data']
+    assert manager['Name'] == 'Enemy Collision Synchronized - v2.7' and manager['Options'][0]['Include'] == ['data']
     assert manager['IconPath'] == manager['Options'][0]['Image'] == 'thumbnail.png'
     width, height = struct.unpack_from('>II', package.read('thumbnail.png'), 16)
     assert width == height and width >= 512
     assert manager['Guid'] == '1f58c710-8822-4bd9-9c52-6fa0ed9277ef'
     manifest = json.loads(package.read('EnemyCollisionSynchronized-manifest.json'))
-    assert manifest['revision'] == 'v2.6' and manifest['runtime_verified'] is False
+    assert manifest['revision'] == 'v2.7' and manifest['runtime_verified'] is False
+    assert manifest['performance']['soft_poll_budget_ms'] == 1
+    assert manifest['performance']['entity_headers_per_poll'] == 128
+    assert manifest['performance']['deep_inspections_per_poll'] == 4
     assert manifest['mixed_corpse_policy']['auxiliary_repair_only'] is True
     assert manifest['mixed_corpse_policy']['relaxes_ragdoll_stop_gate'] is False
     assert manifest['completion_policy']['maximum_requests_per_stop'] == 1

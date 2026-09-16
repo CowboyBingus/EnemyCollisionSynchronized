@@ -14,6 +14,7 @@ local function test(kind)
         if kind=='transient' and calls==1 then error('manager changed') end
         return true,'ready',true
     end}
+    patch.profiler=setfenv(assert(loadfile(source..'/profiler.lua')),env)()
     local install=setfenv(assert(loadfile(source..'/archive_loader.lua')),env)()
     install(function()return api end,patch,{revision='test',game_sha256='game',exe_sha256='exe'})
     if kind=='old' or kind=='build' or kind=='binding' then assert(env.update==original and calls==0);return end

@@ -216,8 +216,8 @@ for _,stale in ipairs({false,true}) do
     for _,t in ipairs({0,.5,1}) do now=t;M.apply(api,g,e,state) end
     f.matrix(f.main_body+160,.6);now=1.2;M.apply(api,g,e,state);assert(stops==0)
     local original=M.snapshot
-    if stale then M.snapshot=function(...)
-        local units,status=original(...);f.matrix(f.main_body+160,1.7);return units,status
+    if stale then M.snapshot=function(a,g,e,s,consume,budget)
+        return original(a,g,e,s,function(u)f.matrix(f.main_body+160,1.7);consume(u)end,budget)
     end end
     now=1.4;M.apply(api,g,e,state);M.snapshot=original
     assert(stops==(stale and 0 or 1))
@@ -315,8 +315,8 @@ for resource,profile in pairs(M.profiles) do
             for _,t in ipairs({0,.5}) do now=t;M.apply(api,g,e,state) end
             assert(stops==0)
             local original=M.snapshot
-            if variant=='stale' then M.snapshot=function(...)
-                local units,status=original(...);f.u(f.entity+16,100);return units,status
+            if variant=='stale' then M.snapshot=function(a,g,e,s,consume,budget)
+                return original(a,g,e,s,function(u)f.u(f.entity+16,100);consume(u)end,budget)
             end end
             if variant=='re_enabled' then
                 f.u(f.main+16,1);api.read=read

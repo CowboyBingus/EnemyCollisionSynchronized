@@ -774,17 +774,28 @@ end
 local claws = {[0x92d0871f]=true,[0x6635646b]=true,[0x50b19c0a]=true}
 
 local ffi,bit=require('ffi'),require('bit')
-local M={profiles=profiles,interval=1/30}
+local M={profiles=profiles,interval=1/30,max_entities=128,max_units=4,budget_seconds=.001}
 M.completion_grace=1
 local ZERO8=string.rep('\0',8)
+local words={uint32_t=ffi.new('uint32_t[1]'),float=ffi.new('float[1]')}
+local matrix_words=ffi.new('float[16]')
 local function scalar(bytes,offset,kind)
-    local value=ffi.new(kind..'[1]');ffi.copy(value,bytes:sub(offset+1),ffi.sizeof(value))
+    assert(offset>=0 and offset+4<=#bytes,'Scalar outside copied data')
+    local value=words[kind]
+    ffi.copy(value,ffi.cast('const uint8_t *',bytes)+offset,4)
     return tonumber(value[0])
 end
 local function u32(b,o) return scalar(b,o or 0,'uint32_t') end
 local function f32(b,o) return scalar(b,o,'float') end
 local function floats(b,o,n)
-    local out={};for i=1,n do out[i]=f32(b,o+(i-1)*4) end;return out
+    assert(o>=0 and n<=16 and o+n*4<=#b,'Matrix outside copied data')
+    -- Finish the bounded copy before allocating the result table. No borrowed
+    -- pointer into a Lua string needs to survive allocations or a GC step.
+    ffi.copy(matrix_words,ffi.cast('const uint8_t *',b)+o,n*4)
+    local out={};for i=1,n do out[i]=tonumber(matrix_words[i-1]) end;return out
+end
+local function phase(api,name)
+    if api.profiler then return api.profiler.phase(name) end
 end
 local function finite(n) return type(n)=='number' and n==n and math.abs(n)<100000 end
 local function dot(a,b) return a[1]*b[1]+a[2]*b[2]+a[3]*b[3] end
@@ -867,8 +878,49 @@ function M.plan(unit)
 end
 
 local function same(api,guards)
-    for _,g in ipairs(guards) do if api.read(g.address,#g.bytes)~=g.bytes then return false end end
-    return true
+    local previous=phase(api,'validation')
+    local function done(value) phase(api,previous);return value end
+    if not api.address or #guards<2 then
+        for _,g in ipairs(guards) do if api.read(g.address,#g.bytes)~=g.bytes then return done(false) end end
+        return done(true)
+    end
+    local compiled=guards.compiled
+    if compiled then
+        if #compiled.original~=#guards then compiled=nil else
+            for i,g in ipairs(guards) do
+                local old=compiled.original[i]
+                if old.address~=g.address or old.bytes~=g.bytes then compiled=nil;break end
+            end
+        end
+    end
+    if not compiled then
+        compiled={original={},groups={}}
+        local ordered={}
+        for i,g in ipairs(guards) do
+            local row={address=g.address,bytes=g.bytes,number=api.address(g.address)}
+            compiled.original[i]=row;ordered[i]=row
+        end
+        table.sort(ordered,function(a,b)return a.number<b.number end)
+        for _,g in ipairs(ordered) do
+            local group=compiled.groups[#compiled.groups]
+            local last=g.number+#g.bytes
+            if not group or g.number>group.number+group.size+128 or last-group.number>4096 then
+                group={address=g.address,number=g.number,size=#g.bytes,checks={}}
+                compiled.groups[#compiled.groups+1]=group
+            else group.size=math.max(group.size,last-group.number) end
+            group.checks[#group.checks+1]={address=g.address,offset=g.number-group.number,bytes=g.bytes}
+        end
+        guards.compiled=compiled
+    end
+    for _,group in ipairs(compiled.groups) do
+        local bytes=api.read(group.address,group.size)
+        for _,check in ipairs(group.checks) do
+            local actual=bytes and #bytes==group.size and bytes:sub(check.offset+1,check.offset+#check.bytes)
+                or api.read(check.address,#check.bytes)
+            if actual~=check.bytes then return done(false) end
+        end
+    end
+    return done(true)
 end
 M.same=same
 
@@ -992,7 +1044,8 @@ local function checked_world(api,exe,index,read,state)
     return world
 end
 
-function M.snapshot(api,game,exe,state)
+function M.snapshot(api,game,exe,state,consume,budget)
+    phase(api,'discovery')
     local cache,used,calls={},0,0
     local function read(address,size)
         assert(size>0 and size<=32768,'Read size outside bounds')
@@ -1000,12 +1053,16 @@ function M.snapshot(api,game,exe,state)
         assert(used<=4*1024*1024 and calls<=18000,'Snapshot budget exceeded')
         local b=assert(api.read(address,size),'Data unavailable');assert(#b==size,'Short read');return b
     end
-    local function cached(address,size)
+    local function cached(address,size,optional)
         local key=api.address(address)
         local sizes=cache[key]
         if not sizes then sizes={};cache[key]=sizes end
-        if not sizes[size] then sizes[size]=read(address,size) end
-        return sizes[size]
+        if sizes[size]==nil then
+            if optional then
+                local ok,bytes=pcall(read,address,size);sizes[size]=ok and bytes or false
+            else sizes[size]=read(address,size) end
+        end
+        return sizes[size] or nil
     end
     local function pointer(b,o) return assert(api.pointer(b,o),'Pointer unavailable') end
     local function ptr(address) return pointer(read(address,8)) end
@@ -1030,12 +1087,18 @@ function M.snapshot(api,game,exe,state)
     if state.mission_flag==0 then return {},'waiting_for_mission' end
     local result={}
     state.cursors=state.cursors or {}
-    for _,corpse in ipairs({false,true}) do
+    -- Alternate first ownership of the shared budget so neither manager can
+    -- starve the other. Cursors are indices only; pointers are always reread.
+    state.manager_turn=not state.manager_turn
+    local order=state.manager_turn and {false,true} or {true,false}
+    for _,corpse in ipairs(order) do
+        phase(api,'discovery')
         local manager_name=corpse and 'corpse' or 'ragdoll'
         local globals,selected={},{}
         local manager=pointer(guard(globals,game+(corpse and 0x276c648 or 0x276c670),8))
         local h=guard(globals,manager,88)
         local capacity,count,active=u32(h,corpse and 16 or 4),u32(h,corpse and 24 or 12),u32(h,corpse and 28 or 16)
+        state[manager_name..'_count']=count
         assert(active<=count and count<=capacity and capacity<=8192 and count<=(corpse and 512 or 2048),'Manager bounds changed')
         if not corpse then assert(u32(h,20)<=active,'Owner partition changed') end
         if count>0 then
@@ -1043,12 +1106,27 @@ function M.snapshot(api,game,exe,state)
             local pointers=read(entities,count*8)
             local start=(state.cursors[manager_name] or 0)%count
             for step=0,count-1 do
+                if budget and (budget.scanned>=M.max_entities or budget.inspected>=M.max_units
+                    or (budget.scanned>0 and api.clock and api.clock()>=budget.deadline)) then
+                    budget.yielded=true;break
+                end
                 local index=(start+step)%count
                 state.cursors[manager_name]=(index+1)%count
+                if budget then budget.scanned=budget.scanned+1 end
                 local entity=api.pointer(pointers,index*8)
                 local e=entity and api.read(entity,24)
                 local profile=e and profiles[e:sub(1,8)]
                 if profile then
+                    -- Lifecycle rejection is cheap; inspect it before counting
+                    -- against the expensive-unit limit or reading any skeleton.
+                    local r=not corpse and runtime+index*11192
+                    local quick=r and api.read(sync+index*432,4)
+                    local eligible=corpse or (quick and #quick==4 and u32(quick)==profile.bodies)
+                    if eligible then
+                    if budget then budget.inspected=budget.inspected+1 end
+                    phase(api,'snapshot')
+                    local profile_start=api.profiler and api.clock()
+                    local profile_reads=api.profiler and api.profiler.reads
                     local ok,unit=pcall(function()
                         local u={resource=e:sub(1,8),id=u32(e,8),unit=u32(e,12),corpse=corpse,
                             owner=bit.band(u32(e,20),1)~=0,active=index<active,manager=manager,index=index,
@@ -1106,10 +1184,26 @@ function M.snapshot(api,game,exe,state)
                                 local pool=cached(exe+0x236db80+64*(bit.band(bit.rshift(id,28),3)+10*bit.rshift(id,30)),56)
                                 local ai=bit.band(id,u32(pool,40));local layout=u32(pool,28)
                                 assert(ai<u32(pool,36) and bit.band(id,u32(pool,52))~=0,'Expired actor')
-                                local entry=pointer(pool)+ai*bit.band(layout,65535)
-                                local identity_address=entry+bit.band(bit.rshift(layout,16),255)
-                                local identity=read(identity_address,4);assert(u32(identity)==id,'Actor generation changed')
-                                local address=entry+bit.rshift(layout,24);local ar=read(address,40)
+                                local stride=bit.band(layout,65535)
+                                local entry=pointer(pool)+ai*stride
+                                local identity_offset=bit.band(bit.rshift(layout,16),255)
+                                local data_offset=bit.rshift(layout,24)
+                                local identity_address,address=entry+identity_offset,entry+data_offset
+                                local identity,ar
+                                if stride<=256 and identity_offset+4<=stride and data_offset+40<=stride then
+                                    local first=ai-ai%16
+                                    local size=math.min(16,u32(pool,36)-first)*stride
+                                    -- Actor rows may be copied together. Havok bodies must
+                                    -- remain individual: disabled body slots are off-limits.
+                                    local rows=cached(pointer(pool)+first*stride,size,true)
+                                    if rows then
+                                        local base=(ai-first)*stride
+                                        identity=rows:sub(base+identity_offset+1,base+identity_offset+4)
+                                        ar=rows:sub(base+data_offset+1,base+data_offset+40)
+                                    end
+                                end
+                                if not ar then identity=read(identity_address,4);ar=read(address,40) end
+                                assert(u32(identity)==id,'Actor generation changed')
                                 assert(u32(ar,12)==u.unit,'Actor owner changed')
                                 local name,node=u32(ar,24),u32(ar,28)
                                 local enabled=bit.band(u32(ar,16),1)~=0
@@ -1152,7 +1246,9 @@ function M.snapshot(api,game,exe,state)
                                             guards={{address=identity_address,bytes=identity},{address=address,bytes=ar},
                                                     {address=body_address+64,bytes=body:sub(65,68)},
                                                     {address=body_address+144,bytes=body:sub(145,152)}}}
-                                        a.stable=same(api,a.guards);u.actors[#u.actors+1]=a
+                                        -- Validate fresh identity/motion again at command
+                                        -- dispatch. Aligned actors need no extra read pass.
+                                        a.stable=true;u.actors[#u.actors+1]=a
                                     end
                                 end
                             end
@@ -1160,14 +1256,31 @@ function M.snapshot(api,game,exe,state)
                         if not same(api,u.guards) then return nil end
                         return u
                     end)
-                    if ok and unit then selected[#selected+1]=unit
+                    if ok and unit then
+                        if consume then
+                            if same(api,globals) then
+                                for _,g in ipairs(globals) do unit.guards[#unit.guards+1]=g end
+                                consume(unit)
+                            else
+                                if state.fling_history then state.fling_history[unit.unit]=nil end
+                                state.skipped=(state.skipped or 0)+1
+                            end
+                        else selected[#selected+1]=unit end
                     elseif not ok then state.skipped=(state.skipped or 0)+1;state.last_skip=tostring(unit) end
                     if (not ok or not unit) and state.fling_history then state.fling_history[u32(e,12)]=nil end
+                    if api.profiler then api.profiler.unit(profile.name,profile_start,profile_reads) end
+                    else
+                        if state.fling_history then state.fling_history[u32(e,12)]=nil end
+                    end
+                    phase(api,'discovery')
                     if #selected>=32 then break end
                 end
             end
         end
-        if same(api,globals) then
+        if consume then
+            -- Each streamed unit was checked against these globals immediately
+            -- before its commands. No pointers or unfinished writes are retained.
+        elseif same(api,globals) then
             for _,u in ipairs(selected) do
                 for _,g in ipairs(globals) do u.guards[#u.guards+1]=g end
                 result[#result+1]=u
@@ -1182,24 +1295,30 @@ function M.snapshot(api,game,exe,state)
 end
 
 function M.apply(api,game,exe,state)
-    local units,reason=M.snapshot(api,game,exe,state)
+    phase(api,'maintenance')
     local now=api.time and api.time() or 0
     state.fling_history=state.fling_history or {}
     state.fling_stopped=state.fling_stopped or {}
     state.fling_scan=(state.fling_scan or 0)+1
     for key,entry in pairs(state.fling_history) do
-        if reason~='ready' or now<entry.last or now-entry.last>1 then state.fling_history[key]=nil end
+        if now<entry.last or now-entry.last>1 then
+            state.max_revisit_seconds=math.max(state.max_revisit_seconds or 0,now-entry.last)
+            state.fling_history[key]=nil
+        end
     end
     for key,entry in pairs(state.fling_stopped) do
         -- Count successful scans rather than wall time: a paused application
         -- must not forget a stop immediately before an ownership handoff.
-        if reason~='ready' or state.fling_scan-entry.last_scan>256 then state.fling_stopped[key]=nil end
+        if state.fling_scan-entry.last_scan>256 then state.fling_stopped[key]=nil end
     end
-    state.observed=#units
-    state.accepted_units=(state.accepted_units or 0)+#units
-    for _,u in ipairs(units) do
+    state.observed=0
+    local function consume(u)
+        state.observed=state.observed+1
+        state.accepted_units=(state.accepted_units or 0)+1
+        phase(api,'planning')
         local actions=M.plan(u)
         local stopped=state.fling_stopped[u.unit]
+        if #actions==0 and not stopped and u.corpse then return end
         if stopped and stopped.requested and u.corpse and u.active
             and stopped.resource==u.resource and same(api,u.guards) then
             -- Conversion creates a new entity while retaining the unit handle.
@@ -1215,10 +1334,10 @@ function M.apply(api,game,exe,state)
             for _,action in ipairs(actions) do
                 if same(api,u.guards) and same(api,action.actor.guards) then
                     if action.kind=='disable' then
-                        state.native.disable(action.actor.id)
+                        phase(api,'native');state.native.disable(action.actor.id)
                         state.claws_disabled=(state.claws_disabled or 0)+1
                     else
-                        state.native.pose(action.actor.id,action.position,action.rotation)
+                        phase(api,'native');state.native.pose(action.actor.id,action.position,action.rotation)
                         state.realignments=(state.realignments or 0)+1
                         if u.corpse and u.main_static<u.main_enabled then
                             state.mixed_corpse_realignments=(state.mixed_corpse_realignments or 0)+1
@@ -1237,6 +1356,7 @@ function M.apply(api,game,exe,state)
                     request_completion=u.owner==false and u.active and settled(u) and not stopped.requested
                         and stopped.stopped_at and now-stopped.stopped_at>=M.completion_grace
                 end
+                phase(api,'motion')
                 stop=M.fling_action(u,state,now)
             else state.fling_history[u.unit]=nil end
             if finish_handoff and same(api,u.guards) then
@@ -1244,7 +1364,7 @@ function M.apply(api,game,exe,state)
                 -- moves (native 0x7a4b30). Finish ONLY a stop we previously
                 -- made, through the routine's normal owned-Corpse branch.
                 -- It may transition the entity, so do not read old storage.
-                state.native.stop_sync(u.manager,u.index)
+                phase(api,'native');state.native.stop_sync(u.manager,u.index)
                 state.fling_handoffs=(state.fling_handoffs or 0)+1
                 state.fling_stopped[u.unit]=nil
             elseif request_completion and same(api,u.guards) then
@@ -1255,14 +1375,14 @@ function M.apply(api,game,exe,state)
                 state.completion_requests=(state.completion_requests or 0)+1
                 state.last_completion_unit=u.unit;state.last_completion_entity=u.id
                 state.last_completion_uptime=now
-                state.native.request_completion(u.id)
+                phase(api,'native');state.native.request_completion(u.id)
                 -- Native completion may invalidate entity storage. Read none
                 -- of this snapshot again after the request.
             elseif stop and same(api,u.guards) and same(api,u.main_pose_guards or {}) then
                 -- Run last: this routine changes update_enabled, invalidating
                 -- this snapshot's guards. The remote-only gate avoids its
                 -- locally-owned force-Corpse branch. No pose is rewound.
-                state.native.stop_sync(u.manager,u.index)
+                phase(api,'native');state.native.stop_sync(u.manager,u.index)
                 state.fling_stops=(state.fling_stops or 0)+1
                 state.last_fling_unit=u.unit;state.last_fling_entity=u.id
                 state.last_fling_type=profiles[u.resource].name;state.last_fling_reason=stop.cause
@@ -1285,6 +1405,15 @@ function M.apply(api,game,exe,state)
             state.fling_history[u.unit]=nil
         end
     end
+    local budget={scanned=0,inspected=0,deadline=api.clock and api.clock()+M.budget_seconds}
+    local units,reason=M.snapshot(api,game,exe,state,consume,budget)
+    -- Snapshot substitutes used by policy tests may return complete units.
+    if state.observed==0 then for _,u in ipairs(units) do consume(u) end end
+    phase(api,'maintenance')
+    state.scan_entities=(state.scan_entities or 0)+budget.scanned
+    state.deep_inspections=(state.deep_inspections or 0)+budget.inspected
+    if budget.yielded then state.budget_yields=(state.budget_yields or 0)+1 end
+    if reason~='ready' then state.fling_history={};state.fling_stopped={};state.cursors={} end
     state.completion_pending=0
     for _,entry in pairs(state.fling_stopped) do
         if entry.requested then state.completion_pending=state.completion_pending+1 end

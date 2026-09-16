@@ -11,6 +11,6 @@ Keeps large enemy corpse collisions aligned with their bodies and curbs the rene
 
 Corpse bodies retain their normal physical collision. The changes run on your game client; install with Bingus Shared Loader, or use Vanilla Plus Megapack with the loader.
 
-[Download v2.6](https://github.com/CowboyBingus/EnemyCollisionSynchronized/releases/tag/v2.6-release) · [Install](INSTALL.txt) · [Build](CONTRIBUTING.md)
+[Download v2.7](https://github.com/CowboyBingus/EnemyCollisionSynchronized/releases/tag/v2.7) · [Install](INSTALL.txt) · [Build](CONTRIBUTING.md) · [Changelog](docs/RELEASE_NOTES.md) · [Performance profiling](docs/PERFORMANCE.md)
 
 Download [Bingus Shared Loader v9 or newer](https://github.com/CowboyBingus/BingusSharedLoader/releases/latest) from its own repository. Enable the loader alongside this mod, or alongside Vanilla Plus Megapack.

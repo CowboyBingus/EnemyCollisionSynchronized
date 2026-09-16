@@ -1,17 +1,17 @@
-Enemy Collision Synchronized - v2.6
+Enemy Collision Synchronized - v2.7
 
 Keeps large enemy corpse collisions aligned with their bodies and curbs the
 renewed ragdoll movement that can occur in vanilla.
 
 1. Close Helldivers 2. Use Arsenal or HD2MM.
 2. Replace the previous Corpse Collision Repair / Enemy Collision Synchronized
-   entry with Enemy-Collision-Synchronized-v2.6.zip.
+   entry with Enemy-Collision-Synchronized-v2.7.zip.
 3. Import and enable Bingus-Shared-Loader-v9.zip and this mod.
 4. With Arsenal default priority, put the loader LAST (bottom of the list).
    If first-mod priority is enabled, put it FIRST instead.
 5. Purge, then Deploy. Launch the game normally.
 
-Vanilla Plus Megapack v2 includes this mod. A current standalone copy can
+Vanilla Plus Megapack v4 includes this version. A current standalone copy can
 remain installed alongside the pack; duplicate callbacks do not stack. Give
 the pack winning priority to use its bundled version, with one shared loader.
 
@@ -19,6 +19,12 @@ Corpse bodies retain their normal physical collision. The mod aligns displaced
 collision pieces, curbs renewed movement after remote corpses settle, and
 removes lingering collision from settled Impaler tentacle claws.
 Compatible large enemies include Terminids, Automatons and Illuminate.
+
+Performance profiling runs automatically. After a busy client mission, save
+%LOCALAPPDATA%/EnemyCollisionSynchronized-Performance.log and
+%LOCALAPPDATA%/CorpseCollisionRepair.log before launching another session.
+The first log reports aggregate mod costs, refreshed every ten seconds.
+v2.7 limits work per update; heavily crowded scenes can delay corpse checks.
 
 Supported game: Steam build 24826606 / EXE 1.8.45317.0.
 Minimum shared loader: loader-v8 / API 1; download loader-v9 or newer separately.

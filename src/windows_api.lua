@@ -6,6 +6,8 @@ return function()
         uint32_t GetModuleFileNameW(void *module, uint16_t *path, uint32_t capacity);
         void *GetCurrentProcess(void);
         uint64_t GetTickCount64(void);
+        int QueryPerformanceCounter(void *counter);
+        int QueryPerformanceFrequency(void *frequency);
         int ReadProcessMemory(void *process, const void *address, void *buffer, size_t size, size_t *read);
         typedef struct {
             void *base; void *allocation_base; uint32_t allocation_protection;
@@ -34,6 +36,12 @@ return function()
     local process = kernel.GetCurrentProcess()
     local api = {}
     function api.time() return tonumber(kernel.GetTickCount64()) / 1000 end
+    local frequency,counter=ffi.new('int64_t[1]'),ffi.new('int64_t[1]')
+    local performance_counter=ffi.cast('int (*)(void *)',kernel.QueryPerformanceCounter)
+    local performance_frequency=ffi.cast('int (*)(void *)',kernel.QueryPerformanceFrequency)
+    assert(performance_frequency(frequency)~=0 and frequency[0]>0,'Performance clock unavailable')
+    local ticks_per_second=tonumber(frequency[0])
+    function api.clock() performance_counter(counter);return tonumber(counter[0])/ticks_per_second end
 
     function api.module(name)
         local handle = kernel.GetModuleHandleA(name)
@@ -41,8 +49,11 @@ return function()
         return ffi.cast('uint8_t *', handle)
     end
 
+    -- ReadProcessMemory does not call back into Lua. Copy to a Lua string before
+    -- reusing this scratch space; no borrowed memory survives a read.
+    local buffer,count=ffi.new('uint8_t[32768]'),ffi.new('size_t[1]')
     function api.read(address, size)
-        local buffer, count = ffi.new('uint8_t[?]', size), ffi.new('size_t[1]')
+        if type(size)~='number' or size<1 or size>32768 or size%1~=0 then return nil end
         if kernel.ReadProcessMemory(process, address, buffer, size, count) == 0 or count[0] ~= size then
             return nil
         end
