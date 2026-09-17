@@ -9,6 +9,16 @@ memory[0]=99;assert(production.read(memory,8):byte()==99 and first:byte()==1)
 assert(production.read(nil,8)==nil and production.read(memory,32769)==nil)
 assert(production.read(memory,0)==nil and production.read(memory,-1)==nil)
 local before=production.clock();assert(production.clock()>=before)
+local cycles=production.thread_cycles()
+assert(cycles==nil or production.thread_cycles()>=cycles,'Thread cycle probe must be optional and monotonic')
+local addresses=ffi.new('uintptr_t[2]',{0x12345000,0x23456000})
+local encoded=ffi.string(addresses,16)
+local pointer_a=production.pointer(encoded)
+local pointer_b=production.pointer(encoded,8)
+assert(production.address(pointer_a)==0x12345000 and production.address(pointer_b)==0x23456000,
+    'Pointer scratch reuse changed a previously decoded value')
+assert(production.pointer(encoded,9)==nil and production.pointer(encoded,-1)==nil)
+assert(production.pointer(string.rep('\0',8))==nil and production.pointer(string.rep('\255',8))==nil)
 
 -- Batched checks preserve every byte predicate, including overlapping guards,
 -- cache invalidation, changed addresses and fallback across unreadable gaps.

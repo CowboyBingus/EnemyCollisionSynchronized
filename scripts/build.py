@@ -12,7 +12,7 @@ from package import package_release
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULE = 'mods/cowboybingus/corpse_collision_repair'
-REVISION = 'v2.7'
+REVISION = 'v2.9.1'
 
 
 def run(args, **kwargs):
@@ -37,14 +37,17 @@ def main():
     catalog = json.loads((ROOT / 'profiles/catalog.json').read_text())
     resources = build_module(ROOT, build, MODULE, 'corpse_data.lua', REVISION)
     env = dict(os.environ, LUA_PATH=str(LUA.parent / '?.lua') + ';;')
-    tests += run([LUA, ROOT / 'tests/test_repair.lua', ROOT / 'src'], env=env)
+    tests += run([LUA, ROOT / 'tests/test_repair.lua', ROOT / 'src', ROOT / 'tests/fixtures'], env=env)
     tests += run([LUA, ROOT / 'tests/test_snapshot.lua', ROOT / 'src'], env=env)
-    tests += run([LUA, ROOT / 'tests/test_fling.lua', ROOT / 'src'], env=env)
-    tests += run([LUA, ROOT / 'tests/test_settlement.lua', ROOT / 'src'], env=env)
-    tests += run([LUA, ROOT / 'tests/test_completion.lua', ROOT / 'src'], env=env)
+    tests += run([LUA, ROOT / 'tests/test_fling.lua', ROOT / 'src', ROOT / 'tests/fixtures'], env=env)
+    tests += run([LUA, ROOT / 'tests/test_settlement.lua', ROOT / 'src', ROOT / 'tests/fixtures'], env=env)
+    tests += run([LUA, ROOT / 'tests/test_completion.lua', ROOT / 'src', ROOT / 'tests/fixtures'], env=env)
     tests += run([LUA, ROOT / 'tests/test_loader.lua', ROOT / 'src'], env=env)
     tests += run([LUA, ROOT / 'tests/test_performance.lua', ROOT / 'src', ROOT / 'tests'], env=env)
+    tests += run([LUA, ROOT / 'tests/test_metadata_cache.lua', ROOT / 'src', ROOT / 'tests'], env=env)
     tests += run([LUA, ROOT / 'tests/test_profiler.lua', ROOT / 'src'], env=env)
+    tests += run([LUA, ROOT / 'tests/test_profiler_detail.lua', ROOT / 'src'], env=env)
+    tests += run([LUA, ROOT / 'tests/test_profiler_behavior.lua', ROOT / 'src', ROOT / 'tests'], env=env)
     (build / ARCHIVE).write_bytes(make_archive(resources))
     for suffix in ('.stream', '.gpu_resources'):
         (build / (ARCHIVE + suffix)).write_bytes(b'')
@@ -55,7 +58,7 @@ def main():
         'description': 'Keeps large enemy corpse collisions aligned with their bodies and curbs the renewed ragdoll movement that can occur in vanilla.',
         'game_exe_sha256': EXE_SHA, 'game_dll_sha256': GAME_DLL_SHA,
         'deployment_files': files, 'files': {p: sha((ROOT / p).read_bytes()) for p in files.values()},
-        'requires': [{'name': 'Bingus Shared Loader', 'api': 1, 'revision': 'loader-v8'}],
+        'requires': [{'name': 'Bingus Shared Loader', 'api': 1, 'revision': 'loader-v14'}],
         'module': MODULE, 'runtime_verified': False, 'status': 'offline_verified_gameplay_pending',
         'executable_memory_changed': False, 'custom_dlls': 0, 'boot_replaced': False,
         'native_calls': {'position': 'EXE+0x79e7d0', 'rotation': 'EXE+0x79eaf0', 'disable_actor': 'EXE+0x7846f0',
@@ -89,7 +92,11 @@ def main():
         'contact_damage_verified': False,
         'performance': {'soft_poll_budget_ms': 1, 'entity_headers_per_poll': 128,
                         'deep_inspections_per_poll': 4, 'fresh_unit_before_mutation': True,
-                        'profiler': 'automatic aggregate phases; sampled read timings; output every 10 seconds'},
+                        'profiler': 'schema 2: bounded slow-poll context, lifecycle costs, recent windows and update-chain timing; output every 10 seconds',
+                        'profiler_schema': 2, 'slow_poll_records': 8, 'detail_sample_every_polls': 30,
+                        'revisit_cache_slots': 256, 'metadata_cache_lifetime': 'current_poll_only',
+                        'identical_pose_fast_path': True, 'lazy_auxiliary_guard_tables': True,
+                        'corpse_poll_cadence_changed': False},
         'offline_tests': tests.strip(),
         'source_sha256': {p.relative_to(ROOT).as_posix(): sha(p.read_bytes())
                           for folder in ('src', 'scripts', 'tests', 'profiles') for p in (ROOT / folder).rglob('*')

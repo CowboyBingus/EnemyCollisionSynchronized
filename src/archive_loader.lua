@@ -11,13 +11,13 @@ return function(create_api,patch,build)
         last_log=now
         if force then print('[CorpseCollisionRepair] '..build.revision..': '..status) end
         pcall(function()
-            local directory=os.getenv('LOCALAPPDATA');if not directory then return end
-            local file=io.open(directory..'/CorpseCollisionRepair.log','w');if not file then return end
+            local logger=rawget(_G,'CowboyBingusModLoader')
+            local file=logger and logger.open_log and logger.open_log('CorpseCollisionRepair.log');if not file then return end
             file:write(build.revision..'\n'..status..'\n')
             for _,key in ipairs({'updates','polls','observed','realignments','claws_disabled','skipped','retries',
                 'accepted_units','preflight_getter','getter_checks','getter_failures','last_getter_failure',
                 'mission_flag','mode_field_40',
-                'max_gap','last_unit','last_actor','read_bytes','read_calls','last_skip',
+                'max_gap','last_unit','last_actor','read_bytes','read_calls','last_skip','profiler_failures',
                 'fling_armed','fling_stops','fling_stops_verified','fling_handoffs','max_fling_distance',
                 'last_fling_unit','last_fling_entity','last_fling_type','last_fling_reason',
                 'fling_limb_stops','last_fling_actor','last_fling_limb_distance','last_fling_limb_degrees',
@@ -45,20 +45,34 @@ return function(create_api,patch,build)
         return g,e
     end)
     if not ok then report(tostring(game),false,true);return end
-    local profiler=patch.profiler and patch.profiler.new(api,build.revision)
-    api.profiler=profiler
+    local profiler,original_read
+    original_read=api.read
+    local function disable_profiler()
+        profiler=nil;api.profiler=nil;api.read=original_read
+        state.profiler_failures=(state.profiler_failures or 0)+1
+    end
+    if patch.profiler then
+        local created,value=pcall(patch.profiler.new,api,build.revision)
+        if created then profiler=value;api.profiler=value else disable_profiler() end
+    end
+    local function telemetry(method,...)
+        if not profiler then return end
+        local called,value=pcall(profiler[method],...)
+        if called then return value end
+        disable_profiler()
+    end
     local previous,previous_shutdown,stopped=update,shutdown,false
     local next_poll=0
     local function check()
         if stopped then return end
         local now=api.time();if now<next_poll then return end
         next_poll=now+patch.interval;state.polls=state.polls+1
-        if profiler then profiler.begin() end
+        telemetry('begin',state)
         local called,accepted,reason,active=pcall(patch.apply,api,game,exe,state)
         if profiler then
             state.read_calls=profiler.reads-profiler.read_start
             state.read_bytes=profiler.bytes-profiler.byte_start
-            profiler.phase('logging')
+            telemetry('phase','logging')
         end
         if not called then
             -- Loading/despawn can invalidate a sequential snapshot. Retry on
@@ -68,9 +82,10 @@ return function(create_api,patch,build)
         elseif not accepted then
             stopped=true;report(tostring(reason),false,true)
         else report(reason,active==true) end
-        if profiler then profiler.finish(state);profiler.flush(state) end
+        telemetry('finish',state);telemetry('flush',state)
     end
-    local function after(called,...)
+    local function after(start,called,...)
+        telemetry('update_finished',start,called)
         if not called then
             stopped=true;report('stopped_after_update_error',false,true);error((...),0)
         end
@@ -78,12 +93,12 @@ return function(create_api,patch,build)
     end
     update=function(...)
         state.updates=state.updates+1
-        if profiler then profiler.updates=profiler.updates+1 end
-        return after(pcall(previous,...))
+        local start=telemetry('update_started')
+        return after(start,pcall(previous,...))
     end
     shutdown=function(...)
         stopped=true;state.native=nil;report('stopped',false,true)
-        if profiler then profiler.flush(state,true) end
+        telemetry('flush',state,true)
         if previous_shutdown then return previous_shutdown(...) end
     end
     report('waiting_for_mission',false,true)

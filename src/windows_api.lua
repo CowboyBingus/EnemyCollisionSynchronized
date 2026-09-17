@@ -6,6 +6,8 @@ return function()
         uint32_t GetModuleFileNameW(void *module, uint16_t *path, uint32_t capacity);
         void *GetCurrentProcess(void);
         uint64_t GetTickCount64(void);
+        void *GetCurrentThread(void);
+        int QueryThreadCycleTime(void *thread, void *cycles);
         int QueryPerformanceCounter(void *counter);
         int QueryPerformanceFrequency(void *frequency);
         int ReadProcessMemory(void *process, const void *address, void *buffer, size_t size, size_t *read);
@@ -42,6 +44,17 @@ return function()
     assert(performance_frequency(frequency)~=0 and frequency[0]>0,'Performance clock unavailable')
     local ticks_per_second=tonumber(frequency[0])
     function api.clock() performance_counter(counter);return tonumber(counter[0])/ticks_per_second end
+    -- Optional read-only diagnostic counter. Raw cycles must not be converted
+    -- to milliseconds: CPU timer frequency/implementation varies by hardware.
+    local has_cycles,query_cycles=pcall(function()
+        return ffi.cast('int (*)(void *, void *)',kernel.QueryThreadCycleTime)
+    end)
+    if has_cycles then
+        local cycle_buffer=ffi.new('uint64_t[1]')
+        function api.thread_cycles()
+            if query_cycles(kernel.GetCurrentThread(),cycle_buffer)~=0 then return tonumber(cycle_buffer[0]) end
+        end
+    end
 
     function api.module(name)
         local handle = kernel.GetModuleHandleA(name)
@@ -60,13 +73,16 @@ return function()
         return ffi.string(buffer, size)
     end
 
+    local pointer_word=ffi.new('uintptr_t[1]')
     function api.pointer(bytes, offset)
         offset = offset or 0
         if not bytes or offset < 0 or offset + 8 > #bytes then return nil end
-        local value = ffi.new('uintptr_t[1]')
-        ffi.copy(value, bytes:sub(offset + 1, offset + 8), 8)
-        if value[0] < 0x10000 or value[0] >= 0x800000000000 then return nil end
-        return ffi.cast('uint8_t *', value[0])
+        -- Copy before conversion; the returned pointer value owns no reference
+        -- to this scratch word or the temporary Lua string.
+        ffi.copy(pointer_word, ffi.cast('const uint8_t *',bytes)+offset, 8)
+        local value=pointer_word[0]
+        if value < 0x10000 or value >= 0x800000000000 then return nil end
+        return ffi.cast('uint8_t *', value)
     end
 
     function api.distance(first, second)

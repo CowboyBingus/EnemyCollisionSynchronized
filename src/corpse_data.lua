@@ -797,6 +797,9 @@ end
 local function phase(api,name)
     if api.profiler then return api.profiler.phase(name) end
 end
+local function detail(api,name)
+    if api.profiler then api.profiler.detail(name) end
+end
 local function finite(n) return type(n)=='number' and n==n and math.abs(n)<100000 end
 local function dot(a,b) return a[1]*b[1]+a[2]*b[2]+a[3]*b[3] end
 local function normalize(v)
@@ -844,6 +847,17 @@ local function settled(unit)
         and unit.main_static==unit.main_enabled
 end
 
+local function command_guards(actor)
+    -- Most inspected auxiliaries already align and never receive a command.
+    -- Keep their copied guard bytes compact until a real action needs the
+    -- usual fresh identity/motion checks. This never rereads stale addresses.
+    local b=actor.guard_source
+    if not actor.guards and b then
+        actor.guards={{address=b[1],bytes=b[2]},{address=b[3],bytes=b[4]},
+            {address=b[5]+64,bytes=b[6]},{address=b[5]+144,bytes=b[7]}}
+    end
+end
+
 function M.plan(unit)
     local profile=profiles[unit.resource]
     -- Recorded assault-walker Corpses retain a dynamic torso and rocket pods.
@@ -857,8 +871,9 @@ function M.plan(unit)
     for _,a in ipairs(unit.actors) do
         if a.enabled and a.stable and not a.registered and profile.actors[a.name]==a.node_hash then
             if profile.name=='Impaler' and claws[a.name] then
+                command_guards(a)
                 actions[#actions+1]={kind='disable',actor=a}
-            elseif a.motion==0 then
+            elseif a.motion==0 and a.pose~=a.node_pose then
                 local p,q=M.rigid(a.node_pose)
                 local old,oldq=M.rigid(a.pose)
                 if p and old then
@@ -868,6 +883,7 @@ function M.plan(unit)
                     -- stationary corpse. There is no upper gap cutoff: the
                     -- recorded 27 m failure must remain repairable.
                     if distance>.025 or rotation<.9999904807207345 then
+                        command_guards(a)
                         actions[#actions+1]={kind='pose',actor=a,position=p,rotation=q,gap=distance}
                     end
                 end
@@ -908,7 +924,8 @@ local function same(api,guards)
                 group={address=g.address,number=g.number,size=#g.bytes,checks={}}
                 compiled.groups[#compiled.groups+1]=group
             else group.size=math.max(group.size,last-group.number) end
-            group.checks[#group.checks+1]={address=g.address,offset=g.number-group.number,bytes=g.bytes}
+            g.offset=g.number-group.number
+            group.checks[#group.checks+1]=g
         end
         guards.compiled=compiled
     end
@@ -1046,7 +1063,7 @@ end
 
 function M.snapshot(api,game,exe,state,consume,budget)
     phase(api,'discovery')
-    local cache,used,calls={},0,0
+    local cache,worlds,body_arrays,pools,used,calls={},{},{},{},0,0
     local function read(address,size)
         assert(size>0 and size<=32768,'Read size outside bounds')
         used=used+size;calls=calls+1
@@ -1065,6 +1082,32 @@ function M.snapshot(api,game,exe,state,consume,budget)
         return sizes[size] or nil
     end
     local function pointer(b,o) return assert(api.pointer(b,o),'Pointer unavailable') end
+    -- These decoded values share the existing copied-byte cache's lifetime:
+    -- one snapshot/poll only. Actor/body identities and mutation guards remain
+    -- fresh. No resolved address is retained in state or across polls.
+    local function world_for(index)
+        local world=worlds[index]
+        if world~=nil then
+            if world then state.getter_checks=(state.getter_checks or 0)+1 end
+            return world or nil
+        end
+        world=checked_world(api,exe,index,cached,state)
+        worlds[index]=world or false
+        state.world_metadata_decodes=(state.world_metadata_decodes or 0)+1
+        return world
+    end
+    local function pool_for(index)
+        local pool=pools[index]
+        if not pool then
+            local b=cached(exe+0x236db80+64*index,56)
+            local layout=u32(b,28)
+            pool={base=pointer(b),count=u32(b,36),mask=u32(b,40),generation=u32(b,52),
+                stride=bit.band(layout,65535),identity_offset=bit.band(bit.rshift(layout,16),255),data_offset=bit.rshift(layout,24)}
+            pools[index]=pool
+            state.pool_metadata_decodes=(state.pool_metadata_decodes or 0)+1
+        end
+        return pool
+    end
     local function ptr(address) return pointer(read(address,8)) end
     local function guard(list,address,size)
         local b=read(address,size);list[#list+1]={address=address,bytes=b};return b
@@ -1073,7 +1116,7 @@ function M.snapshot(api,game,exe,state,consume,budget)
     -- path used by the corpse reader, so validation need not wait for a death.
     -- World 2 hosts the captured enemy actors; absence during loading is normal.
     state.preflight_getter='checking'
-    local world=checked_world(api,exe,2,cached,state)
+    local world=world_for(2)
     state.preflight_getter=world and 'verified' or 'waiting_for_world'
     local mode_reference=api.read(game+0x276c3d0,8)
     local mode=api.pointer(mode_reference)
@@ -1125,6 +1168,7 @@ function M.snapshot(api,game,exe,state,consume,budget)
                     if eligible then
                     if budget then budget.inspected=budget.inspected+1 end
                     phase(api,'snapshot')
+                    detail(api,'metadata')
                     local profile_start=api.profiler and api.clock()
                     local profile_reads=api.profiler and api.profiler.reads
                     local ok,unit=pcall(function()
@@ -1158,6 +1202,7 @@ function M.snapshot(api,game,exe,state,consume,budget)
                             u.main_signature=table.concat(members,':')
                         end
                         u.settled=true
+                        detail(api,'skeleton')
                         local registry=pointer(guard(u.guards,exe+0x1a140f0,8))
                         local uh=cached(registry,0xa8);local slot_index=u.unit%0x400000
                         assert(slot_index<u32(uh,0x98),'Unit index changed')
@@ -1170,6 +1215,8 @@ function M.snapshot(api,game,exe,state,consume,budget)
                         assert(node_count==profile.nodes,'Skeleton changed')
                         local node_pointer=pointer(guard(u.guards,object+0x88,8))
                         local nodes=read(node_pointer,node_count*64)
+                        local node_matrices,node_bytes={},{}
+                        detail(api,'actors')
                         local list=pointer(guard(u.guards,exe+0x27c9928,8))+slot_index*24
                         local ah=guard(u.guards,list,24);local flags=u32(ah,4)
                         assert(bit.band(flags,0x40000000)~=0 and bit.band(u32(ah),0x3fffffff)==u.unit,'Actor list identity changed')
@@ -1179,23 +1226,23 @@ function M.snapshot(api,game,exe,state,consume,budget)
                         local handles=guard(u.guards,actor_pointer,n*4)
                         local main_names={}
                         for i=0,n-1 do
+                            detail(api,'actors')
                             local id=u32(handles,i*4)
                             if id~=0xffffffff then
-                                local pool=cached(exe+0x236db80+64*(bit.band(bit.rshift(id,28),3)+10*bit.rshift(id,30)),56)
-                                local ai=bit.band(id,u32(pool,40));local layout=u32(pool,28)
-                                assert(ai<u32(pool,36) and bit.band(id,u32(pool,52))~=0,'Expired actor')
-                                local stride=bit.band(layout,65535)
-                                local entry=pointer(pool)+ai*stride
-                                local identity_offset=bit.band(bit.rshift(layout,16),255)
-                                local data_offset=bit.rshift(layout,24)
+                                local pool=pool_for(bit.band(bit.rshift(id,28),3)+10*bit.rshift(id,30))
+                                local ai=bit.band(id,pool.mask)
+                                assert(ai<pool.count and bit.band(id,pool.generation)~=0,'Expired actor')
+                                local stride=pool.stride
+                                local entry=pool.base+ai*stride
+                                local identity_offset,data_offset=pool.identity_offset,pool.data_offset
                                 local identity_address,address=entry+identity_offset,entry+data_offset
                                 local identity,ar
                                 if stride<=256 and identity_offset+4<=stride and data_offset+40<=stride then
                                     local first=ai-ai%16
-                                    local size=math.min(16,u32(pool,36)-first)*stride
+                                    local size=math.min(16,pool.count-first)*stride
                                     -- Actor rows may be copied together. Havok bodies must
                                     -- remain individual: disabled body slots are off-limits.
-                                    local rows=cached(pointer(pool)+first*stride,size,true)
+                                    local rows=cached(pool.base+first*stride,size,true)
                                     if rows then
                                         local base=(ai-first)*stride
                                         identity=rows:sub(base+identity_offset+1,base+identity_offset+4)
@@ -1219,9 +1266,13 @@ function M.snapshot(api,game,exe,state,consume,budget)
                                 -- They are never repair targets. Skip their bodies entirely;
                                 -- Undeclared disabled primaries still block settlement.
                                 if enabled then
-                                    local world=assert(checked_world(api,exe,bit.rshift(id,30),cached,state),'Physics world unavailable')
+                                    detail(api,'bodies')
+                                    local world_index=bit.rshift(id,30)
+                                    local world=assert(world_for(world_index),'Physics world unavailable')
                                     local bi=bit.band(u32(ar,20),0xffffff);assert(bi<262144,'Body index changed')
-                                    local body_address=pointer(cached(world+24,8))+160*bi
+                                    local base=body_arrays[world_index]
+                                    if not base then base=pointer(cached(world+24,8));body_arrays[world_index]=base end
+                                    local body_address=base+160*bi
                                     local body=read(body_address,160);local motion=u32(body,64)
                                     assert(u32(body,144)==id and u32(body,148)==u.unit,'Physics body identity changed')
                                     local filter=bit.band(u32(body,108),127)
@@ -1234,18 +1285,28 @@ function M.snapshot(api,game,exe,state,consume,budget)
                                         u.guards[#u.guards+1]={address=body_address+64,bytes=body:sub(65,68)}
                                         u.guards[#u.guards+1]={address=body_address+144,bytes=body:sub(145,152)}
                                         local pose_guard={address=body_address,bytes=body:sub(1,64)}
-                                        local main_body={id=id,pose=floats(body,0,16),guards={pose_guard}}
-                                        u.main_bodies[#u.main_bodies+1]=main_body
                                         u.main_pose_guards[#u.main_pose_guards+1]=pose_guard
+                                        -- Corpse-phase planning uses primary identity/motion,
+                                        -- not decoded primary transforms. Keep every guard.
+                                        local main_body={id=id,pose=not corpse and floats(body,0,16) or nil,guards={pose_guard}}
+                                        u.main_bodies[#u.main_bodies+1]=main_body
                                         if id==u.root_id then u.root_body=main_body end
                                     end
                                     if profile.actors[name] and node<node_count then
+                                        local node_pose=node_matrices[node]
+                                        if not node_pose then
+                                            node_pose=floats(nodes,node*64,16);node_matrices[node]=node_pose
+                                            node_bytes[node]=nodes:sub(node*64+1,node*64+64)
+                                        end
+                                        -- Copied matrices are immutable during the poll.
+                                        -- Exact byte equality proves no pose repair is due;
+                                        -- all nonidentical matrices retain the rigid checks.
+                                        local pose=body:sub(1,64)==node_bytes[node] and node_pose or floats(body,0,16)
                                         local a={id=id,name=name,node=node,node_hash=u32(ar,32),enabled=enabled,motion=motion,
                                             registered=u.registered[id] or is_main or filter==52 or filter==48 or filter==83,
-                                            pose=floats(body,0,16),node_pose=floats(nodes,node*64,16),
-                                            guards={{address=identity_address,bytes=identity},{address=address,bytes=ar},
-                                                    {address=body_address+64,bytes=body:sub(65,68)},
-                                                    {address=body_address+144,bytes=body:sub(145,152)}}}
+                                            pose=pose,node_pose=node_pose,
+                                            guard_source={identity_address,identity,address,ar,body_address,
+                                                body:sub(65,68),body:sub(145,152)}}
                                         -- Validate fresh identity/motion again at command
                                         -- dispatch. Aligned actors need no extra read pass.
                                         a.stable=true;u.actors[#u.actors+1]=a
@@ -1268,7 +1329,7 @@ function M.snapshot(api,game,exe,state,consume,budget)
                         else selected[#selected+1]=unit end
                     elseif not ok then state.skipped=(state.skipped or 0)+1;state.last_skip=tostring(unit) end
                     if (not ok or not unit) and state.fling_history then state.fling_history[u32(e,12)]=nil end
-                    if api.profiler then api.profiler.unit(profile.name,profile_start,profile_reads) end
+                    if api.profiler then api.profiler.unit(profile.name,profile_start,profile_reads,ok and unit or nil) end
                     else
                         if state.fling_history then state.fling_history[u32(e,12)]=nil end
                     end
@@ -1303,6 +1364,7 @@ function M.apply(api,game,exe,state)
     for key,entry in pairs(state.fling_history) do
         if now<entry.last or now-entry.last>1 then
             state.max_revisit_seconds=math.max(state.max_revisit_seconds or 0,now-entry.last)
+            state.history_expirations=(state.history_expirations or 0)+1
             state.fling_history[key]=nil
         end
     end
@@ -1317,6 +1379,10 @@ function M.apply(api,game,exe,state)
         state.accepted_units=(state.accepted_units or 0)+1
         phase(api,'planning')
         local actions=M.plan(u)
+        if api.profiler then
+            u.profile_lifecycle=u.corpse and (#actions>0 and 'corpse_repair' or settled(u) and 'corpse_aligned' or 'corpse_other')
+                or (u.update_enabled==false and 'ragdoll_stopped' or settled(u) and 'ragdoll_settled' or 'ragdoll_dynamic')
+        end
         local stopped=state.fling_stopped[u.unit]
         if #actions==0 and not stopped and u.corpse then return end
         if stopped and stopped.requested and u.corpse and u.active
