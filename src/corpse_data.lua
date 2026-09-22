@@ -81,7 +81,7 @@ local profiles = {
             [0xa3d491d1]=0xbccf91e5,
             [0xbc01b5fd]=0x0f0196b3,
         }},
-    ['\070\001\230\229\204\153\170\054']={name="Bile Spewer",nodes=99,bodies=14,finish_disabled=false,main={
+    ['\070\001\230\229\204\153\170\054']={name="Bile Spewer",nodes=117,bodies=14,finish_disabled=false,main={
         0x9b115563,0x0f0196b3,0xc96f8166,0xae5a7e64,0xdcb76f26,0x1ecb5822,0x0f5d4be0,0x12fd8f94,0x341adbcc,0xd66758f9,0x8b9102b4,0xfa1accaf,0x6e8366df,0x0f5f005b},
         disabled_main={},actors={
             [0x312d55bb]=0x0e835875,
@@ -1044,17 +1044,17 @@ function M.fling_action(unit,state,now)
 end
 
 local function checked_world(api,exe,index,read,state)
-    local reference=read(exe+0x27be808+176*index,8)
+    local reference=read(exe+0x27ba8a8+176*index,8)
     if reference==ZERO8 then return nil end
     local world=assert(api.pointer(reference),'Physics world unavailable')
     local vt=assert(api.pointer(read(world,8)),'Physics vtable unavailable')
     local getter=assert(api.pointer(read(vt+136,8)),'Physics getter unavailable')
     local offset=api.distance(getter,exe)
-    if offset~=0xd11660 then
+    if offset~=0xd0cfa0 then
         state.getter_failures=(state.getter_failures or 0)+1
         state.last_getter_failure=string.format(
             'Body getter changed: world_index=%d world=%.0f vtable=%.0f actual=%.0f expected=%.0f offset=%.0f',
-            index,api.address(world),api.address(vt),api.address(getter),api.address(exe+0xd11660),offset)
+            index,api.address(world),api.address(vt),api.address(getter),api.address(exe+0xd0cfa0),offset)
         error(state.last_getter_failure)
     end
     state.getter_checks=(state.getter_checks or 0)+1
@@ -1099,7 +1099,7 @@ function M.snapshot(api,game,exe,state,consume,budget)
     local function pool_for(index)
         local pool=pools[index]
         if not pool then
-            local b=cached(exe+0x236db80+64*index,56)
+            local b=cached(exe+0x2369b00+64*index,56)
             local layout=u32(b,28)
             pool={base=pointer(b),count=u32(b,36),mask=u32(b,40),generation=u32(b,52),
                 stride=bit.band(layout,65535),identity_offset=bit.band(bit.rshift(layout,16),255),data_offset=bit.rshift(layout,24)}
@@ -1118,7 +1118,7 @@ function M.snapshot(api,game,exe,state,consume,budget)
     state.preflight_getter='checking'
     local world=world_for(2)
     state.preflight_getter=world and 'verified' or 'waiting_for_world'
-    local mode_reference=api.read(game+0x276c3d0,8)
+    local mode_reference=api.read(game+0x33266a0,8)
     local mode=api.pointer(mode_reference)
     state.mission_flag=0;state.mode_field_40=0
     if not mode then return {},'waiting_for_mission' end
@@ -1138,7 +1138,7 @@ function M.snapshot(api,game,exe,state,consume,budget)
         phase(api,'discovery')
         local manager_name=corpse and 'corpse' or 'ragdoll'
         local globals,selected={},{}
-        local manager=pointer(guard(globals,game+(corpse and 0x276c648 or 0x276c670),8))
+        local manager=pointer(guard(globals,game+(corpse and 0x3326920 or 0x3326948),8))
         local h=guard(globals,manager,88)
         local capacity,count,active=u32(h,corpse and 16 or 4),u32(h,corpse and 24 or 12),u32(h,corpse and 28 or 16)
         state[manager_name..'_count']=count
@@ -1177,7 +1177,7 @@ function M.snapshot(api,game,exe,state,consume,budget)
                             guards={},main={},main_bodies={},main_pose_guards={},registered={},actors={},
                             main_enabled=0,main_static=0,main_disabled=0,main_dynamic_allowed=0}
                         u.guards[#u.guards+1]={address=entity,bytes=e}
-                        u.guards[#u.guards+1]={address=game+0x276c3d0,bytes=mode_reference}
+                        u.guards[#u.guards+1]={address=game+0x33266a0,bytes=mode_reference}
                         u.guards[#u.guards+1]={address=mode+8,bytes=mode_bytes:sub(9,12)}
                         u.guards[#u.guards+1]={address=entities+index*8,bytes=pointers:sub(index*8+1,index*8+8)}
                         if not corpse then
@@ -1203,7 +1203,7 @@ function M.snapshot(api,game,exe,state,consume,budget)
                         end
                         u.settled=true
                         detail(api,'skeleton')
-                        local registry=pointer(guard(u.guards,exe+0x1a140f0,8))
+                        local registry=pointer(guard(u.guards,exe+0x1a100f0,8))
                         local uh=cached(registry,0xa8);local slot_index=u.unit%0x400000
                         assert(slot_index<u32(uh,0x98),'Unit index changed')
                         local gen_address=pointer(uh,0xa0)+slot_index
@@ -1217,7 +1217,7 @@ function M.snapshot(api,game,exe,state,consume,budget)
                         local nodes=read(node_pointer,node_count*64)
                         local node_matrices,node_bytes={},{}
                         detail(api,'actors')
-                        local list=pointer(guard(u.guards,exe+0x27c9928,8))+slot_index*24
+                        local list=pointer(guard(u.guards,exe+0x27c5b40,8))+slot_index*24
                         local ah=guard(u.guards,list,24);local flags=u32(ah,4)
                         assert(bit.band(flags,0x40000000)~=0 and bit.band(u32(ah),0x3fffffff)==u.unit,'Actor list identity changed')
                         local n=bit.band(flags,127)
@@ -1396,7 +1396,12 @@ function M.apply(api,game,exe,state)
             or stopped.members~=u.main_signature or u.corpse or u.update_enabled) then
             state.fling_stopped[u.unit]=nil;stopped=nil
         end
-        if same(api,u.guards) then
+        -- No actions means this outer identity pass is redundant. Motion samples
+        -- still need identity AND pose validation below: they can arm a later
+        -- stop even when this poll issues no command.
+        local planned=#actions>0 or stopped~=nil
+        if not planned then state.guard_passes_skipped=(state.guard_passes_skipped or 0)+1 end
+        if not planned or same(api,u.guards) then
             for _,action in ipairs(actions) do
                 if same(api,u.guards) and same(api,action.actor.guards) then
                     if action.kind=='disable' then
@@ -1414,8 +1419,10 @@ function M.apply(api,game,exe,state)
                 else state.skipped=(state.skipped or 0)+1 end
             end
             local stop,finish_handoff,request_completion
-            if same(api,u.guards) and same(api,u.main_pose_guards or {})
-                and (not u.root_body or same(api,u.root_body.guards or {})) then
+            local validate_motion=planned or (not u.corpse and u.owner==false and u.active==true
+                and u.update_enabled==true and settled(u))
+            if not validate_motion or (same(api,u.guards) and same(api,u.main_pose_guards or {})
+                and (not u.root_body or same(api,u.root_body.guards or {}))) then
                 if stopped then
                     stopped.last_scan=state.fling_scan
                     finish_handoff=u.owner and u.active and settled(u)
@@ -1466,6 +1473,9 @@ function M.apply(api,game,exe,state)
                     state.fling_stopped[u.unit]={entity=u.id,resource=u.resource,members=u.main_signature,
                         last_scan=state.fling_scan,stopped_at=now}
                 end
+            elseif stop then
+                -- A race at dispatch breaks the observation interval too.
+                state.fling_history[u.unit]=nil
             end
         else
             state.fling_history[u.unit]=nil

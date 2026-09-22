@@ -12,7 +12,7 @@ from package import package_release
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULE = 'mods/cowboybingus/corpse_collision_repair'
-REVISION = 'v2.9.2'
+REVISION = 'v2.10.1'
 
 
 def run(args, **kwargs):
@@ -59,11 +59,11 @@ def main():
         'game_exe_sha256': EXE_SHA, 'game_dll_sha256': GAME_DLL_SHA,
         'deployment_files': files, 'files': {p: sha((ROOT / p).read_bytes()) for p in files.values()},
         'requires': [{'name': 'Bingus Shared Loader', 'api': 1, 'revision': 'loader-v14'}],
-        'module': MODULE, 'runtime_verified': False, 'status': 'offline_verified_gameplay_pending',
+        'module': MODULE, 'runtime_verified': False, 'status': 'release',
         'executable_memory_changed': False, 'custom_dlls': 0, 'boot_replaced': False,
-        'native_calls': {'position': 'EXE+0x79e7d0', 'rotation': 'EXE+0x79eaf0', 'disable_actor': 'EXE+0x7846f0',
-                         'stop_ragdoll_sync': 'game.dll+0x7a33f0',
-                         'request_corpse_completion': 'game.dll+0x111ed10'},
+        'native_calls': {'position': 'EXE+0x799880', 'rotation': 'EXE+0x799ba0', 'disable_actor': 'EXE+0x77f4f0',
+                         'stop_ragdoll_sync': 'game.dll+0x7abd00',
+                         'request_corpse_completion': 'game.dll+0x13c02c0'},
         'scope': ['Auxiliary static actors after settlement across 21 reviewed large-entity resources',
                   'Three settled Impaler tentacle-claw actors disabled',
                   'Remote target RagdollSync stopped if a stationary fixed root resumes substantial movement',

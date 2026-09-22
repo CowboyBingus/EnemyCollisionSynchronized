@@ -4,9 +4,10 @@ return function(create_api,patch,build)
         realignments=0,claws_disabled=0,skipped=0,retries=0,max_gap=0}
     rawset(_G,'CorpseCollisionRepair',state)
     local api,last_log
+    local diagnostics=rawget(_G,'CowboyBingusDiagnostics')==true
     local function report(status,active,force)
         state.status=status;state.active=active
-        if not force and rawget(_G,'CowboyBingusDiagnostics')~=true then return end
+        if not force and not diagnostics then return end
         local now=api and api.time() or 0
         if not force and last_log and now-last_log<2 then return end
         last_log=now
@@ -16,7 +17,7 @@ return function(create_api,patch,build)
             local file=logger and logger.open_log and logger.open_log('CorpseCollisionRepair.log');if not file then return end
             file:write(build.revision..'\n'..status..'\n')
             for _,key in ipairs({'updates','polls','observed','realignments','claws_disabled','skipped','retries',
-                'accepted_units','preflight_getter','getter_checks','getter_failures','last_getter_failure',
+                'accepted_units','guard_passes_skipped','preflight_getter','getter_checks','getter_failures','last_getter_failure',
                 'mission_flag','mode_field_40',
                 'max_gap','last_unit','last_actor','read_bytes','read_calls','last_skip','profiler_failures',
                 'fling_armed','fling_stops','fling_stops_verified','fling_handoffs','max_fling_distance',
@@ -52,7 +53,7 @@ return function(create_api,patch,build)
         profiler=nil;api.profiler=nil;api.read=original_read
         state.profiler_failures=(state.profiler_failures or 0)+1
     end
-    if patch.profiler and rawget(_G,'CowboyBingusDiagnostics')==true then
+    if diagnostics and patch.profiler then
         local created,value=pcall(patch.profiler.new,api,build.revision)
         if created then profiler=value;api.profiler=value else disable_profiler() end
     end

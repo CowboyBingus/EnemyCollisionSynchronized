@@ -1,85 +1,16 @@
-TEST BUILD: mission-mode and centralized-log corrections. In-game validation pending.
+Enemy Collision Synchronized v2.10.1
 
-Requires Bingus Shared Loader v14 for the shared log folder.
+Supports Helldivers 2 Steam build 25327279 / game 1.8.45850.0.
+Requires Bingus Shared Loader v16 or newer / API 1.
+
+1. Close Helldivers 2 and use one mod manager.
+2. Replace the previous package with Enemy-Collision-Synchronized-v2.10.1.zip.
+3. Enable this package and Bingus Shared Loader.
+4. With Arsenal's default priority, put the loader last (at the bottom).
+   With first-mod priority enabled, put the loader first.
+5. Purge / Deploy, then start the game normally.
+
+To remove or change options, close the game, disable the package, and
+Purge / Deploy again. Keep the loader enabled while other mods need it.
 
 Logs: %LOCALAPPDATA%/CowboyBingus/Helldivers2/Logs
-
-
-
-Enemy Collision Synchronized - v2.9.2
-
-
-
-Keeps large enemy corpse collisions aligned with their bodies and curbs the
-
-renewed ragdoll movement that can occur in vanilla.
-
-
-
-1. Close Helldivers 2. Use Arsenal or HD2MM.
-
-2. Replace the previous Corpse Collision Repair / Enemy Collision Synchronized
-
-   entry with Enemy-Collision-Synchronized-v2.9.2.zip.
-
-3. Import and enable Bingus-Shared-Loader-v14.zip and this mod.
-
-4. With Arsenal default priority, put the loader LAST (bottom of the list).
-
-   If first-mod priority is enabled, put it FIRST instead.
-
-5. Purge, then Deploy. Launch the game normally.
-
-
-
-Vanilla Plus Megapack v8 includes this version. A current standalone copy can
-
-remain installed alongside the pack; duplicate callbacks do not stack. Give
-
-the pack winning priority to use its bundled version, with one shared loader.
-
-
-
-Corpse bodies retain their normal physical collision. The mod aligns displaced
-
-collision pieces, curbs renewed movement after remote corpses settle, and
-
-removes lingering collision from settled Impaler tentacle claws.
-
-Compatible large enemies include Terminids, Automatons and Illuminate.
-
-
-
-Performance profiling is disabled by default. Diagnostic builds can set
-CowboyBingusDiagnostics = true before initialization. When enabled, save
-
-%LOCALAPPDATA%/CowboyBingus/Helldivers2/Logs/EnemyCollisionSynchronized-Performance.log and
-
-%LOCALAPPDATA%/CowboyBingus/Helldivers2/Logs/CorpseCollisionRepair.log before launching another session.
-
-The first log reports recent and cumulative mod costs, the slowest polls,
-
-and costs by enemy/lifecycle, refreshed every ten seconds. Check it starts
-
-with v2.9.2 and schema=2. Work per update remains limited; heavily crowded
-
-scenes can delay corpse checks. Repair behavior is unchanged from v2.7.
-
-
-
-Supported game: Steam build 24826606 / EXE 1.8.45317.0.
-
-Minimum shared loader: loader-v8 / API 1; download loader-v12 or newer separately.
-
-
-
-To update, replace the ZIP, then Purge / Deploy. To remove, disable it and
-
-Purge / Deploy. Keep the loader enabled if other dependent mods remain.
-
-
-
-Developed with assistance from GPT-6 Astra.
-
-Logs: %LOCALAPPDATA%\CowboyBingus\Helldivers2\Logs
-Requires Bingus Shared Loader v14 or newer for this log folder.

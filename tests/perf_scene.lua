@@ -13,7 +13,7 @@ return function(M, api, living, dead, corpse_count)
     local function matrix(at, x)
         ffi.copy(at, ffi.new('float[16]', {1,0,0,0,0,1,0,0,0,0,1,0,x or 0,0,0,1}), 64)
     end
-    local g, e = alloc(0x2771000), alloc(0x2800000)
+    local g, e = alloc(0x3330000), alloc(0x2800000)
     local resource, profile
     for key, value in pairs(M.profiles) do if value.name == 'Bile Titan' then resource, profile = key, value end end
     local actors_per_unit = profile.bodies
@@ -23,23 +23,23 @@ return function(M, api, living, dead, corpse_count)
     end
     assert(actors_per_unit < 128)
     local total = living + dead + corpse_count
-    local mode = alloc(0x44); u(mode+8, 1); u(mode+0x40, 2); p(g+0x276c3d0, mode)
+    local mode = alloc(0x44); u(mode+8, 1); u(mode+0x40, 2); p(g+0x33266a0, mode)
     local registry, generations, slots = alloc(0xa8), alloc(total), alloc(total*8)
-    p(e+0x1a140f0, registry); p(registry+0xa0, generations); p(registry+0x88, slots); u(registry+0x98, total)
+    p(e+0x1a100f0, registry); p(registry+0xa0, generations); p(registry+0x88, slots); u(registry+0x98, total)
     ffi.fill(generations, total, 1)
-    local lists = alloc(total*24); p(e+0x27c9928, lists)
+    local lists = alloc(total*24); p(e+0x27c5b40, lists)
     local maximum = (dead+corpse_count)*actors_per_unit+1
     local actor_rows, body_rows = alloc(maximum*40), alloc(maximum*160)
-    local pool = e+0x236db80+64*21
+    local pool = e+0x2369b00+64*21
     p(pool, actor_rows); u(pool+28, 40); u(pool+36, maximum); u(pool+40, 0xfffffff); u(pool+52, 0xc0000000)
     local world, vt = alloc(64), alloc(144)
-    p(e+0x27be808+176*2, world); p(world, vt); p(vt+136, e+0xd11660); p(world+24, body_rows)
+    p(e+0x27ba8a8+176*2, world); p(world, vt); p(vt+136, e+0xd0cfa0); p(world+24, body_rows)
     local next_actor, units, handles_by_unit, runtimes, entity_rows = 1, {}, {}, {}, {}
     for _, corpse in ipairs({false, true}) do
         local count = corpse and corpse_count or living+dead
         local manager, entities = alloc(88), alloc(count*8)
         local runtime, sync = alloc(count*(corpse and 72 or 11192)), alloc(count*(corpse and 56 or 432))
-        p(g+(corpse and 0x276c648 or 0x276c670), manager)
+        p(g+(corpse and 0x3326920 or 0x3326948), manager)
         u(manager+(corpse and 16 or 4), count); u(manager+(corpse and 24 or 12), count); u(manager+(corpse and 28 or 16), count)
         p(manager+(corpse and 64 or 56), entities); p(manager+72, runtime); p(manager+80, sync)
         for index = 0, count-1 do

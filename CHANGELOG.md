@@ -1,3 +1,10 @@
+# v2.10.1
+
+- Update compatibility for game build 25327279.
+- Refresh enemy collision and ragdoll layouts, including Bile Spewers.
+- Reduce repeated guard reads when no correction is needed.
+- Keep routine performance logging disabled unless diagnostics are enabled.
+
 # v2.9.2
 
 - Make detailed performance profiling and periodic status logs opt-in.

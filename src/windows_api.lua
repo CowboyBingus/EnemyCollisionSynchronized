@@ -147,28 +147,28 @@ return function()
         local function pointer(address)
             return assert(api.pointer(api.read(address,8)),'Physics binding unavailable')
         end
-        local binding=pointer(game+0x276c070)
-        assert(api.distance(binding,exe)==0x27d1830,'Unsupported physics API')
-        for _,entry in ipairs({{8,0x7846f0},{0x60,0x79e7d0},{0x68,0x79eaf0}}) do
+        local binding=pointer(game+0x3326338)
+        assert(api.distance(binding,exe)==0x27cd910,'Unsupported physics API')
+        for _,entry in ipairs({{8,0x77f4f0},{0x60,0x799880},{0x68,0x799ba0}}) do
             assert(api.distance(pointer(binding+entry[1]),exe)==entry[2],'Unsupported physics function')
         end
-        assert(api.read(exe+0x79e7d0,8)=='\x48\x89\x5c\x24\x08\x48\x89\x6c','Position setter changed')
-        assert(api.read(exe+0x79eaf0,8)=='\x48\x89\x5c\x24\x08\x48\x89\x6c','Rotation setter changed')
+        assert(api.read(exe+0x799880,8)=='\x48\x89\x5c\x24\x08\x48\x89\x6c','Position setter changed')
+        assert(api.read(exe+0x799ba0,8)=='\x48\x89\x5c\x24\x08\x48\x89\x6c','Rotation setter changed')
         -- Entire captured routine, including its ownership gate and final
         -- update-byte store. Full comparison rejects a changed/detoured body.
-        local stop_hex='48895c2408574883ec60488b4138448bc24969d8b82b00004a8b3cc048035948488bcfe8e85dd5ff80b8c40600000074558b4f08e8a7b459004885c07448f64014017442448b480c33d2c6442450000f57c0f30f11442448448bc1488b0dded1fc01895424408954243888542430488d542478f30f11442428c744242001000000e88ab09700c683a42b000000488b5c24704883c4605fc3'
+        local stop_hex='48895c2408574883ec60488b4138448bc24969d8b82b00004a8b3cc048035948488bcfe86822d5ff80b8c40600000074558b4f08e807e082004885c07448f64014017442448b480c33d2c6442450000f57c0f30f11442448448bc1488b0d9e17cc02895424408954243888542430488d542478f30f11442428c744242001000000e82a3dc100c683a42b000000488b5c24704883c4605fc3'
         local stop_bytes=stop_hex:gsub('..',function(pair)return string.char(tonumber(pair,16)) end)
-        assert(api.read(game+0x7a33f0,#stop_bytes)==stop_bytes,'Ragdoll stop routine changed')
+        assert(api.read(game+0x7abd00,#stop_bytes)==stop_bytes,'Ragdoll stop routine changed')
         -- Existing owner-routed completion request. Verify all chained unwind
         -- fragments, including the remote branch and owned queue checks.
-        local completion_hex='48895c24184889542410564883ec70488bf1418bd8418bc8e8a3fbc1ff4885c00f8472010000f64014014889bc24800000000f84f20000008b501081faff7f0000742e488b0566036501488b4808e8bd41c2ff84c0741a488b0dc21166018bd3488b89a8b30000e874e9aaffe91f010000488b0d30d664018bd3e8b1db7fff84c00f840901000033ff488d461c8bcf9039180f84f8000000ffc14883c04083f92072ed8bcf488d86240800000f1f400039180f84d8000000ffc14883c04081f98000000072ea8bcbe8f3fac1ff4885c00f84ba000000f64014010f84b0000000448b480c488d94248800000040887c24500f57c0f30f11442448448bc3f30f10058fd1ff00488bce897c2440897c2438c644243001f30f11442428c744242001000000e8c8f6ffffeb668b701081feff7f0000750433ffeb23488b0dd0d16401488b4140488bb860010000488b4138ff5008488bc88bd6ffd7488bf88bcbe85df7c1ff41b901000000c7442460010000004c8d442460c744246404000000488bd74889442468b9326c6621e8b0bcaaff488bbc2480000000488b9c24900000004883c4705ec3'
+        local completion_hex='48895c24184889542410564883ec70488bf1418bd8418bc8e8639ac1ff4885c00f8472010000f64014014889bc24800000000f84f20000008b501081faff7f0000742e488b058ebc0a02488b4808e87de0c1ff84c0741a488b0dd2cb0b028bd3488b89a8b30000e8c40c82ffe91f010000488b0d5063f6018bd3e8116d56ff84c00f840901000033ff488d461c8bcf9039180f84f8000000ffc14883c04083f92072ed8bcf488d86240800000f1f400039180f84d8000000ffc14883c04081f98000000072ea8bcbe8b399c1ff4885c00f84ba000000f64014010f84b0000000448b480c488d94248800000040887c24500f57c0f30f11442448448bc3f30f100587630001488bce897c2440897c2438c644243001f30f11442428c744242001000000e8c8f6ffffeb668b701081feff7f0000750433ffeb23488b0d085ff601488b4140488bb860010000488b4138ff5008488bc88bd6ffd7488bf88bcbe81d96c1ff41b901000000c7442460010000004c8d442460c744246404000000488bd74889442468b9326c6621e8e0df81ff488bbc2480000000488b9c24900000004883c4705ec3'
         local completion_bytes=completion_hex:gsub('..',function(pair)return string.char(tonumber(pair,16)) end)
-        assert(api.read(game+0x111ed10,#completion_bytes)==completion_bytes,'Corpse completion request changed')
-        local request_completion=ffi.cast('void (*)(void *,uintptr_t,uint32_t)',game+0x111ed10)
-        local stop_sync=ffi.cast('void (*)(void *,uint32_t)',game+0x7a33f0)
-        local position=ffi.cast('void (*)(uint32_t,const float *)',exe+0x79e7d0)
-        local rotation=ffi.cast('void (*)(uint32_t,const float *)',exe+0x79eaf0)
-        local enabled=ffi.cast('void (*)(const uint32_t *,uint32_t,uint32_t)',exe+0x7846f0)
+        assert(api.read(game+0x13c02c0,#completion_bytes)==completion_bytes,'Corpse completion request changed')
+        local request_completion=ffi.cast('void (*)(void *,uintptr_t,uint32_t)',game+0x13c02c0)
+        local stop_sync=ffi.cast('void (*)(void *,uint32_t)',game+0x7abd00)
+        local position=ffi.cast('void (*)(uint32_t,const float *)',exe+0x799880)
+        local rotation=ffi.cast('void (*)(uint32_t,const float *)',exe+0x799ba0)
+        local enabled=ffi.cast('void (*)(const uint32_t *,uint32_t,uint32_t)',exe+0x77f4f0)
         -- These engine wrappers validate the actor handle and enqueue native
         -- physics commands. They never write a body pose or broad-phase record
         -- directly. The queue owns copies of the input vectors.
@@ -182,7 +182,7 @@ return function()
             stop_sync=function(manager,index)stop_sync(manager,index) end,
             request_completion=function(entity)
                 -- Resolve each time; never keep a scene/service pointer.
-                local service=pointer(game+0x2770630)
+                local service=pointer(game+0x346d500)
                 assert(api.read(service,24),'Corpse completion service unavailable')
                 request_completion(service,0,entity)
             end,

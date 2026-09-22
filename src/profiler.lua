@@ -2,7 +2,7 @@
 local P = {}
 local stages={'discovery','snapshot','validation','planning','motion','native','maintenance','logging'}
 local sections={'metadata','skeleton','actors','bodies'}
-local counters={'scan_entities','deep_inspections','budget_yields','realignments','claws_disabled','fling_stops','completion_requests','history_expirations'}
+local counters={'scan_entities','deep_inspections','budget_yields','realignments','claws_disabled','fling_stops','completion_requests','history_expirations','guard_passes_skipped'}
 local lifecycles={ragdoll_settled=true,ragdoll_dynamic=true,ragdoll_stopped=true,
     corpse_aligned=true,corpse_repair=true,corpse_other=true,unclassified=true,rejected=true}
 local buckets={.1,.25,.5,1,2,4,8,16,33,100,1000,math.huge}

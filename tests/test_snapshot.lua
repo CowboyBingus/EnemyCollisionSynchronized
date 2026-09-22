@@ -29,8 +29,8 @@ local function fixture(corpse,native_pointers,resource)
     end
     local game,exe=native_pointers and 0x7ff800000000 or 0x10000000,native_pointers and 0x7ff700000000 or 0x20000000
     local function global(base,rva,target)add(base+rva,8);p(base+rva,target) end
-    local mode=reserve(0x44);u(mode+8,1);u(mode+0x40,1);global(game,0x276c3d0,mode)
-    local rm,cm=reserve(88),reserve(88);global(game,0x276c670,rm);global(game,0x276c648,cm)
+    local mode=reserve(0x44);u(mode+8,1);u(mode+0x40,1);global(game,0x33266a0,mode)
+    local rm,cm=reserve(88),reserve(88);global(game,0x3326948,rm);global(game,0x3326920,cm)
     local manager=corpse and cm or rm;local entities=reserve(8);local entity=reserve(24)
     write(entity,resource);u(entity+8,37);u(entity+12,0x400007);u(entity+16,99)
     local runtime=reserve(corpse and 72 or 11192);local sync=reserve(corpse and 56 or 432)
@@ -40,17 +40,17 @@ local function fixture(corpse,native_pointers,resource)
         u(runtime+11160,count);write(runtime+11172,'\1\0');u(sync,count);u(sync+184,count)
         for i=0,count-1 do u(runtime+i*712,0x90000001+i) end
     end
-    local registry=reserve(0xa8);global(exe,0x1a140f0,registry)
+    local registry=reserve(0xa8);global(exe,0x1a100f0,registry)
     local generations,slots=reserve(32),reserve(32*8);p(registry+0xa0,generations);p(registry+0x88,slots);u(registry+0x98,32)
     write(generations+7,'\1');local object=reserve(0x100);p(slots+56,object);u(object+8,0x400007)
     local nodes=reserve(profile.nodes*64);u(object+0x70,profile.nodes);p(object+0x88,nodes);matrix(nodes+72*64,-161.2,107.25,20.17)
-    local lists=reserve(32*24);global(exe,0x27c9928,lists)
+    local lists=reserve(32*24);global(exe,0x27c5b40,lists)
     local list=lists+7*24;u(list,0x400007);u(list+4,0x40000000+extra)
     local handles=reserve(32*4);p(list+8,handles)
-    local pool=exe+0x236db80+64*21;add(pool,56)
+    local pool=exe+0x2369b00+64*21;add(pool,56)
     local actors=reserve(32*40);p(pool,actors);u(pool+28,40);u(pool+36,32);u(pool+40,255);u(pool+52,0xc0000000)
     local world,vt,bodies=reserve(64),reserve(144),reserve(32*160)
-    global(exe,0x27be808+176*2,world);p(world,vt);p(vt+136,exe+0xd11660);p(world+24,bodies)
+    global(exe,0x27ba8a8+176*2,world);p(world,vt);p(vt+136,exe+0xd0cfa0);p(world+24,bodies)
     for index=1,extra do
         local id=0x90000000+index;u(handles+4*(index-1),id)
         local a=actors+40*index;u(a,id);u(a+12,0x400007);u(a+16,1);u(a+20,index)

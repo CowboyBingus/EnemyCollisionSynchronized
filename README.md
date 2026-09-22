@@ -1,3 +1,4 @@
+
 ![Enemy Collision Synchronized](assets/banner.png)
 
 # Enemy Collision Synchronized
@@ -11,8 +12,8 @@ Keeps large enemy corpse collisions aligned with their bodies and curbs the rene
 
 Corpse bodies retain their normal physical collision. The changes run on your game client; install with Bingus Shared Loader, or use Vanilla Plus Megapack with the loader.
 
-Current release: **v2.9.2**. [Install](INSTALL.txt) · [Build](CONTRIBUTING.md) · [Changelog](CHANGELOG.md)
+Local build: **v2.9** with reduced inspection overhead and expanded performance diagnostics. [Published v2.7](https://github.com/CowboyBingus/EnemyCollisionSynchronized/releases/tag/v2.7) · [Install](INSTALL.txt) · [Build](CONTRIBUTING.md) · [Changelog](docs/RELEASE_NOTES.md) · [Performance profiling](docs/PERFORMANCE.md)
 
-Download [Bingus Shared Loader v14 or newer](https://github.com/CowboyBingus/BingusSharedLoader/releases/latest) from its own repository. Enable the loader alongside this mod, or alongside Vanilla Plus Megapack.
+Download [Bingus Shared Loader v16 or newer](https://github.com/CowboyBingus/BingusSharedLoader/releases/latest) from its own repository. Enable the loader alongside this mod, or alongside Vanilla Plus Megapack.
 
-Release **v2.9.2** includes input/performance fixes. Offline checks cover this revision; in-game frame-time validation is pending. Routine diagnostics are off by default; developers can set `CowboyBingusDiagnostics = true` before initialization to enable them.
+Current version: **v2.10.1**, for game build **25327279**. See [changes](CHANGELOG.md) and [validation coverage](docs/MIGRATION_VALIDATION.md).
