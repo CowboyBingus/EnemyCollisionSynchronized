@@ -6,7 +6,7 @@ Logs: %LOCALAPPDATA%/CowboyBingus/Helldivers2/Logs
 
 
 
-Enemy Collision Synchronized - v2.9.1
+Enemy Collision Synchronized - v2.9.2
 
 
 
@@ -20,7 +20,7 @@ renewed ragdoll movement that can occur in vanilla.
 
 2. Replace the previous Corpse Collision Repair / Enemy Collision Synchronized
 
-   entry with Enemy-Collision-Synchronized-v2.9.1.zip.
+   entry with Enemy-Collision-Synchronized-v2.9.2.zip.
 
 3. Import and enable Bingus-Shared-Loader-v14.zip and this mod.
 
@@ -50,7 +50,8 @@ Compatible large enemies include Terminids, Automatons and Illuminate.
 
 
 
-Performance profiling runs automatically. After a busy client mission, save
+Performance profiling is disabled by default. Diagnostic builds can set
+CowboyBingusDiagnostics = true before initialization. When enabled, save
 
 %LOCALAPPDATA%/CowboyBingus/Helldivers2/Logs/EnemyCollisionSynchronized-Performance.log and
 
@@ -60,7 +61,7 @@ The first log reports recent and cumulative mod costs, the slowest polls,
 
 and costs by enemy/lifecycle, refreshed every ten seconds. Check it starts
 
-with v2.9.1 and schema=2. Work per update remains limited; heavily crowded
+with v2.9.2 and schema=2. Work per update remains limited; heavily crowded
 
 scenes can delay corpse checks. Repair behavior is unchanged from v2.7.
 

@@ -12,16 +12,13 @@ The repair and motion-containment actions remain enabled. Entity identity, membe
 
 Work deferred by the budget runs on later updates. Under extreme corpse counts, repairs can be delayed and a corpse's observation gap can exceed one second. The motion detector then discards its old baseline and must observe settlement again. This deliberately preserves the existing safety rule; the profiler flags these gaps. Continuous detection of every corpse under an arbitrary load is not guaranteed.
 
-## Capture a client test
+## Enable diagnostics for a client test
 
-1. Close the game. Replace the old standalone package with `Enemy-Collision-Synchronized-v2.7.zip`, or update to `Vanilla-Plus-Megapack-v4.zip`. Keep Bingus Shared Loader v9 or newer. Purge / Deploy, then launch normally.
-2. If both standalone and megapack are enabled, give the updated package winning priority over older copies. Check the first line of `%LOCALAPPDATA%/CorpseCollisionRepair.log` says `v2.7`.
-3. Join another player's mission and play through a busy fight, including large enemy deaths. Profiling starts automatically; the separate corpse tracker is not required. Avoid running the detailed tracker during a performance comparison because it adds its own read overhead.
-4. After the busy section, copy `%LOCALAPPDATA%/EnemyCollisionSynchronized-Performance.log`. Copy `%LOCALAPPDATA%/CorpseCollisionRepair.log` too, and note the observed FPS, whether you were host/client, and whether corpse behavior was normal.
+Routine logging and profiling are disabled in v2.9.2. For a diagnostic build, set `CowboyBingusDiagnostics = true` before addon initialization. Startup, failure and shutdown reports remain available without it.
 
-The performance log is a bounded aggregate, refreshed at most once every ten seconds and flushed on a normal shutdown. It reports totals since this game launch, not a full gameplay recording. Save a copy before relaunching; a new game process replaces the file. No hotkeys or extra configuration are required. It contains no player/account information, entity pointers or positions.
+Use the current standalone release or Vanilla Plus Megapack v19 with Bingus Shared Loader v15 or newer. If multiple copies are installed, give the current version winning priority. Compare the same gameplay with diagnostics disabled when assessing normal performance.
 
-For a useful FPS comparison, repeat a similar client mission with the mod disabled and enabled. Enemy counts, host and map should be as similar as practical. A single mission cannot establish a guaranteed FPS improvement.
+When enabled, the profiler writes `EnemyCollisionSynchronized-Performance.log` in `%LOCALAPPDATA%/CowboyBingus/Helldivers2/Logs` at most once every ten seconds and on shutdown. The companion status file is `CorpseCollisionRepair.log`. Reports are local diagnostic output and are excluded from publication.
 
 ## Reading the report
 

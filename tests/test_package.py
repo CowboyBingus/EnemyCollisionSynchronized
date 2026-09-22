@@ -15,13 +15,13 @@ with zipfile.ZipFile(sys.argv[1]) as package:
     expected |= {'manifest.json', 'thumbnail.png', 'EnemyCollisionSynchronized-manifest.json', 'EnemyCollisionSynchronized-README.txt'}
     assert set(names) == expected and len(names) == len(expected)
     manager = json.loads(package.read('manifest.json'))
-    assert manager['Name'] == 'Enemy Collision Synchronized - v2.9.1' and manager['Options'][0]['Include'] == ['data']
+    assert manager['Name'] == 'Enemy Collision Synchronized - v2.9.2' and manager['Options'][0]['Include'] == ['data']
     assert manager['IconPath'] == manager['Options'][0]['Image'] == 'thumbnail.png'
     width, height = struct.unpack_from('>II', package.read('thumbnail.png'), 16)
     assert width == height and width >= 512
     assert manager['Guid'] == '1f58c710-8822-4bd9-9c52-6fa0ed9277ef'
     manifest = json.loads(package.read('EnemyCollisionSynchronized-manifest.json'))
-    assert manifest['revision'] == 'v2.9.1' and manifest['runtime_verified'] is False
+    assert manifest['revision'] == 'v2.9.2' and manifest['runtime_verified'] is False
     assert manifest['performance']['metadata_cache_lifetime'] == 'current_poll_only'
     assert manifest['performance']['corpse_poll_cadence_changed'] is False
     assert manifest['performance']['profiler_schema'] == 2 and manifest['performance']['slow_poll_records'] == 8

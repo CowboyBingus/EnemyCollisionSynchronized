@@ -6,6 +6,7 @@ return function(create_api,patch,build)
     local api,last_log
     local function report(status,active,force)
         state.status=status;state.active=active
+        if not force and rawget(_G,'CowboyBingusDiagnostics')~=true then return end
         local now=api and api.time() or 0
         if not force and last_log and now-last_log<2 then return end
         last_log=now
@@ -51,7 +52,7 @@ return function(create_api,patch,build)
         profiler=nil;api.profiler=nil;api.read=original_read
         state.profiler_failures=(state.profiler_failures or 0)+1
     end
-    if patch.profiler then
+    if patch.profiler and rawget(_G,'CowboyBingusDiagnostics')==true then
         local created,value=pcall(patch.profiler.new,api,build.revision)
         if created then profiler=value;api.profiler=value else disable_profiler() end
     end

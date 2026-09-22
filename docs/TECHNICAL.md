@@ -12,6 +12,6 @@ The current code does not directly patch damage callbacks. Reducing displaced co
 
 The public v2.6 name retains the existing manager GUID, `mods/cowboybingus/corpse_collision_repair` resource, `CorpseCollisionRepair` state and `CorpseCollisionRepair.log` filename for compatible upgrades. The gameplay source compiles to the same resource as the v2.7 standalone release. Private session material is not distributed.
 
-v2.7 bounds each poll to 128 entity headers or four deep inspections with a soft 1 ms deadline. An inspection already underway finishes with its mutation guards intact. Work resumes from rotating manager indices. Read buffers are reused and nearby guard reads are batched while retaining every exact predicate. The automatic bounded profiler counts all reads, samples read timings, and reports phase and enemy-type costs. See [performance details](PERFORMANCE.md).
+v2.7 bounds each poll to 128 entity headers or four deep inspections with a soft 1 ms deadline. An inspection already underway finishes with its mutation guards intact. Work resumes from rotating manager indices. Read buffers are reused and nearby guard reads are batched while retaining every exact predicate. The opt-in bounded profiler counts all reads, samples read timings, and reports phase and enemy-type costs. See [performance details](PERFORMANCE.md).
 
 Requires Bingus Shared Loader v8 or newer / API 1; download the loader separately from its own repository. Supported game fingerprints are pinned in `scripts/archive.py` for Steam build 24826606 / EXE 1.8.45317.0.

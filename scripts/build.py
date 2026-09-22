@@ -12,7 +12,7 @@ from package import package_release
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULE = 'mods/cowboybingus/corpse_collision_repair'
-REVISION = 'v2.9.1'
+REVISION = 'v2.9.2'
 
 
 def run(args, **kwargs):
@@ -92,7 +92,8 @@ def main():
         'contact_damage_verified': False,
         'performance': {'soft_poll_budget_ms': 1, 'entity_headers_per_poll': 128,
                         'deep_inspections_per_poll': 4, 'fresh_unit_before_mutation': True,
-                        'profiler': 'schema 2: bounded slow-poll context, lifecycle costs, recent windows and update-chain timing; output every 10 seconds',
+                        'profiler_enabled_default': False, 'routine_logs_enabled_default': False,
+                        'profiler': 'opt-in schema 2: bounded slow-poll context, lifecycle costs, recent windows and update-chain timing; output every 10 seconds',
                         'profiler_schema': 2, 'slow_poll_records': 8, 'detail_sample_every_polls': 30,
                         'revisit_cache_slots': 256, 'metadata_cache_lifetime': 'current_poll_only',
                         'identical_pose_fast_path': True, 'lazy_auxiliary_guard_tables': True,
