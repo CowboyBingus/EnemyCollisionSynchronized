@@ -1,3 +1,9 @@
+# v2.10.2
+
+- Update native guards and corpse state-machine asset hashes for Steam build 25480438.
+- Preserve the 21-profile allowlist and opt-in profiling.
+- Offline builds and package checks pass; live gameplay validation remains pending.
+
 # v2.10.1
 
 - Update compatibility for game build 25327279.

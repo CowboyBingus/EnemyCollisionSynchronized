@@ -15,13 +15,18 @@ with zipfile.ZipFile(sys.argv[1]) as package:
     expected |= {'manifest.json', 'thumbnail.png', 'EnemyCollisionSynchronized-manifest.json', 'EnemyCollisionSynchronized-README.txt'}
     assert set(names) == expected and len(names) == len(expected)
     manager = json.loads(package.read('manifest.json'))
-    assert manager['Name'] == 'Enemy Collision Synchronized - v2.10.1' and manager['Options'][0]['Include'] == ['data']
+    # Derive the revision from the package under test: the name, the embedded
+    # manifest and the release filename must agree, so a bump cannot ship a
+    # package that still reports the previous revision in either log.
+    revision = Path(sys.argv[1]).stem.rsplit('-', 1)[-1]
+    assert manager['Name'] == 'Enemy Collision Synchronized - ' + revision, manager['Name']
+    assert manager['Options'][0]['Include'] == ['data']
     assert manager['IconPath'] == manager['Options'][0]['Image'] == 'thumbnail.png'
     width, height = struct.unpack_from('>II', package.read('thumbnail.png'), 16)
     assert width == height and width >= 512
     assert manager['Guid'] == '1f58c710-8822-4bd9-9c52-6fa0ed9277ef'
     manifest = json.loads(package.read('EnemyCollisionSynchronized-manifest.json'))
-    assert manifest['revision'] == 'v2.10.1' and manifest['runtime_verified'] is False
+    assert manifest['revision'] == revision and manifest['runtime_verified'] is False
     assert manifest['performance']['metadata_cache_lifetime'] == 'current_poll_only'
     assert manifest['performance']['corpse_poll_cadence_changed'] is False
     assert manifest['performance']['profiler_schema'] == 2 and manifest['performance']['slow_poll_records'] == 8
@@ -41,7 +46,7 @@ with zipfile.ZipFile(sys.argv[1]) as package:
     assert manifest['profile_coverage']['body_counts'] == [6, 10, 14, 15]
     assert manifest['profile_coverage']['factions'] == ['Automaton', 'Illuminate', 'Terminid']
     assert manifest['contact_damage_verified'] is False
-    assert manifest['requires'] == [{'name': 'Bingus Shared Loader', 'api': 1, 'revision': 'loader-v14'}]
+    assert manifest['requires'] == [{'name': 'Bingus Shared Loader', 'api': 1, 'revision': 'loader-v8'}]
     for name, digest in manifest['files'].items():
         assert hashlib.sha256(package.read(name)).hexdigest().upper() == digest
     data = package.read('data/' + ARCHIVE)

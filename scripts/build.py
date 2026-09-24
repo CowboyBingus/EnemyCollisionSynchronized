@@ -12,7 +12,7 @@ from package import package_release
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULE = 'mods/cowboybingus/corpse_collision_repair'
-REVISION = 'v2.10.1'
+REVISION = 'v2.10.2'
 
 
 def run(args, **kwargs):
@@ -58,7 +58,7 @@ def main():
         'description': 'Keeps large enemy corpse collisions aligned with their bodies and curbs the renewed ragdoll movement that can occur in vanilla.',
         'game_exe_sha256': EXE_SHA, 'game_dll_sha256': GAME_DLL_SHA,
         'deployment_files': files, 'files': {p: sha((ROOT / p).read_bytes()) for p in files.values()},
-        'requires': [{'name': 'Bingus Shared Loader', 'api': 1, 'revision': 'loader-v14'}],
+        'requires': [{'name': 'Bingus Shared Loader', 'api': 1, 'revision': 'loader-v8'}],
         'module': MODULE, 'runtime_verified': False, 'status': 'release',
         'executable_memory_changed': False, 'custom_dlls': 0, 'boot_replaced': False,
         'native_calls': {'position': 'EXE+0x799880', 'rotation': 'EXE+0x799ba0', 'disable_actor': 'EXE+0x77f4f0',
