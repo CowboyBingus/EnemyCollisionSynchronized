@@ -40,6 +40,7 @@
   "tests/test_profiler_detail.lua",
   "tests/test_profiles.py",
   "tests/test_repair.lua",
+  "tests/test_repose_cooldown.lua",
   "tests/test_settlement.lua",
   "tests/test_snapshot.lua"
 ]

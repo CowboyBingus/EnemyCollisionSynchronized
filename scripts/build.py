@@ -12,7 +12,7 @@ from package import package_release
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULE = 'mods/cowboybingus/corpse_collision_repair'
-REVISION = 'v2.10.2'
+REVISION = 'v2.11.0'
 
 
 def run(args, **kwargs):
@@ -45,6 +45,7 @@ def main():
     tests += run([LUA, ROOT / 'tests/test_loader.lua', ROOT / 'src'], env=env)
     tests += run([LUA, ROOT / 'tests/test_performance.lua', ROOT / 'src', ROOT / 'tests'], env=env)
     tests += run([LUA, ROOT / 'tests/test_metadata_cache.lua', ROOT / 'src', ROOT / 'tests'], env=env)
+    tests += run([LUA, ROOT / 'tests/test_repose_cooldown.lua', ROOT / 'src', ROOT / 'tests'], env=env)
     tests += run([LUA, ROOT / 'tests/test_profiler.lua', ROOT / 'src'], env=env)
     tests += run([LUA, ROOT / 'tests/test_profiler_detail.lua', ROOT / 'src'], env=env)
     tests += run([LUA, ROOT / 'tests/test_profiler_behavior.lua', ROOT / 'src', ROOT / 'tests'], env=env)

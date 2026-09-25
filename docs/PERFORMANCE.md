@@ -1,4 +1,4 @@
-# Performance investigation and profiling — v2.9
+# Performance investigation and profiling — v2.11.0
 
 Players report substantial improvement from v2.7 but some residual performance impact. v2.8 expands the evidence collected during gameplay; it does not change repair policy or claim an additional FPS improvement.
 
@@ -24,8 +24,8 @@ The disappearing-parts report remains a separate unresolved investigation; this 
 
 ## Capture a client test
 
-1. Close the game. Replace the old standalone package with `Enemy-Collision-Synchronized-v2.9.zip`, or update to `Vanilla-Plus-Megapack-v8.zip`. Keep Bingus Shared Loader v12 or newer for the megapack. Purge / Deploy, then launch normally.
-2. If both standalone and megapack are enabled, give the updated package winning priority over older copies. Check the first line of `%LOCALAPPDATA%/CorpseCollisionRepair.log` says `v2.9` and the performance log says `schema=2`.
+1. Close the game. Replace the old standalone package with `Enemy-Collision-Synchronized-v2.11.0.zip`, or update to `Vanilla-Plus-Megapack-v8.zip`. Keep Bingus Shared Loader v12 or newer for the megapack. Purge / Deploy, then launch normally.
+2. If both standalone and megapack are enabled, give the updated package winning priority over older copies. Check the first line of `%LOCALAPPDATA%/CorpseCollisionRepair.log` says `v2.11.0` and the performance log says `schema=2`.
 3. Join another player's mission and play through a busy fight, including large enemy deaths. Profiling starts automatically; the separate corpse tracker is not required. Avoid running the detailed tracker during a performance comparison because it adds its own read overhead.
 4. After the busy section, copy `%LOCALAPPDATA%/EnemyCollisionSynchronized-Performance.log`. Copy `%LOCALAPPDATA%/CorpseCollisionRepair.log` too, and note the observed FPS, whether you were host/client, and whether corpse behavior was normal.
 

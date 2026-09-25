@@ -34,7 +34,7 @@ This is an active gameplay candidate with no dry-run mode. Legitimate late distu
 
 ## Build and testing
 
-Python 3.10+ and the project's Windows x64 LuaJIT build are required. Set `HD2_LUAJIT`, then run `python -B scripts/build.py` from this directory. `HD2_GAME_ROOT` overrides the default Steam installation. The builder checks executable fingerprints, runs the gameplay and performance regressions, compiles one Lua resource and creates the root `releases/Enemy-Collision-Synchronized-v2.9.zip`; it never installs or launches the game.
+Python 3.10+ and the project's Windows x64 LuaJIT build are required. Set `HD2_LUAJIT`, then run `python -B scripts/build.py` from this directory. `HD2_GAME_ROOT` overrides the default Steam installation. The builder checks executable fingerprints, runs the gameplay and performance regressions, compiles one Lua resource and creates the root `releases/Enemy-Collision-Synchronized-v2.11.0.zip`; it never installs or launches the game.
 
 The checked-in [catalog](profiles/catalog.json) is the source of the embedded allowlist. After an evidence-backed catalog edit, run `python -B scripts/generate_profiles.py`; the build rejects stale generated code. Synthetic reader and policy tests exercise all 21 layouts, disabled landing bodies, static corpse filters, native stop/readback, completion and rejection paths. Existing recorded Titan/Impaler replays remain required gates. Synthetic native calls are stubs and do not prove in-game physics outcomes.
 
