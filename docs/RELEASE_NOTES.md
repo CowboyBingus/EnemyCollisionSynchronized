@@ -1,4 +1,8 @@
-- Guard validation compares fresh game bytes against a reusable buffer instead of copying each block into a Lua string: 10-35% less CPU per poll in the synthetic benchmark, most in repair-heavy scenes. The same reads, guards and results; profiling counts are unchanged.
-- About half the Lua garbage per poll in realistic synthetic scenes, with a byte-identical command log (changes first built as v2.10.3, never released separately).
-- A one-second cooldown before re-posing the same actor again for small corrections (under 10 cm and 5 degrees); larger gaps and rotations bypass it. This cuts repeated re-posing of settled Charger ragdolls.
-- Measured in real play: about 0.29 ms to 0.14 ms of main-thread time per frame in missions.
+- Polls on the ship, outside a mission and in a mission with nothing to inspect no longer allocate Lua memory, and make 1-2 memory reads instead of 4-5.
+- Scanning living enemies and inspecting corpses and ragdolls take fewer memory reads and less Lua memory, with the same checks and results.
+- Errors from the game or from other mods now reach the game unchanged instead of looking like errors in this mod.
+- After such an error the mod pauses, forgets what it was tracking and resumes once 60 updates in a row succeed.
+- Performance profiling and the frequent status log run again only when diagnostics are turned on.
+- Another mod's Windows declarations can no longer stop this mod's memory reader from starting.
+- Requires Bingus Shared Loader v18 or newer.
+- Measured in live play: 0.067 ms per frame in client missions (0.188 in the previous session, which had more ragdolls) and 0.004 on the ship.

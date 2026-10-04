@@ -1,14 +1,14 @@
 Release for Steam build 25480438 / EXE 1.8.46015.0. Offline checks passed; checked in live play.
 
-v2.11.0: cheaper guard validation, less Lua garbage and a re-pose cooldown for small corrections.
+v2.12.0: fewer memory reads, no Lua garbage while idle, and a pause instead of a stop after errors elsewhere in the update chain.
 
-Requires Bingus Shared Loader v16 for the shared log folder.
+Requires Bingus Shared Loader v18 or newer (v19 is current).
 
 Logs: %LOCALAPPDATA%/CowboyBingus/Helldivers2/Logs
 
 
 
-Enemy Collision Synchronized - v2.11.0
+Enemy Collision Synchronized - v2.12.0
 
 
 
@@ -22,9 +22,9 @@ renewed ragdoll movement that can occur in vanilla.
 
 2. Replace the previous Corpse Collision Repair / Enemy Collision Synchronized
 
-   entry with Enemy-Collision-Synchronized-v2.11.0.zip.
+   entry with Enemy-Collision-Synchronized-v2.12.0.zip.
 
-3. Import and enable Bingus-Shared-Loader-v17.zip and this mod.
+3. Import and enable Bingus Shared Loader (v18 or newer) and this mod.
 
 4. With Arsenal default priority, put the loader LAST (bottom of the list).
 
@@ -34,7 +34,7 @@ renewed ragdoll movement that can occur in vanilla.
 
 
 
-Vanilla Plus Megapack v8 includes this version. A current standalone copy can
+Vanilla Plus Megapack also includes this mod. A current standalone copy can
 
 remain installed alongside the pack; duplicate callbacks do not stack. Give
 
@@ -52,7 +52,11 @@ Compatible large enemies include Terminids, Automatons and Illuminate.
 
 
 
-Performance profiling runs automatically. After a busy client mission, save
+Performance profiling is off by default. Diagnostic setups can set
+
+CowboyBingusDiagnostics = true before initialization. Then, after a busy
+
+client mission, save
 
 %LOCALAPPDATA%/CowboyBingus/Helldivers2/Logs/EnemyCollisionSynchronized-Performance.log and
 
@@ -62,7 +66,7 @@ The first log reports recent and cumulative mod costs, the slowest polls,
 
 and costs by enemy/lifecycle, refreshed every ten seconds. Check it starts
 
-with v2.11.0 and schema=2. Work per update remains limited; heavily crowded
+with v2.12.0 and schema=2. Work per update remains limited; heavily crowded
 
 scenes can delay corpse checks. Repair behavior is unchanged from v2.7
 
@@ -72,7 +76,7 @@ apart from the re-pose cooldown added in v2.11.0.
 
 Supported game: Steam build 25480438 / EXE 1.8.46015.0.
 
-Minimum shared loader: loader-v8 / API 1; download loader-v12 or newer separately.
+Shared loader: Bingus Shared Loader v18 or newer, downloaded separately.
 
 
 
@@ -82,7 +86,6 @@ Purge / Deploy. Keep the loader enabled if other dependent mods remain.
 
 
 
-Developed with assistance from GPT-6 Astra.
+Developed with assistance from GPT-6 Astra and Claude Opus 5.5.
 
 Logs: %LOCALAPPDATA%\CowboyBingus\Helldivers2\Logs
-Requires Bingus Shared Loader v17 or newer for this log folder.

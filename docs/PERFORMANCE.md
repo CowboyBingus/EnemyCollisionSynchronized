@@ -1,4 +1,4 @@
-# Performance investigation and profiling — v2.11.0
+# Performance investigation and profiling — v2.12.0
 
 Players report substantial improvement from v2.7 but some residual performance impact. v2.8 expands the evidence collected during gameplay; it does not change repair policy or claim an additional FPS improvement.
 
@@ -24,12 +24,12 @@ The disappearing-parts report remains a separate unresolved investigation; this 
 
 ## Capture a client test
 
-1. Close the game. Replace the old standalone package with `Enemy-Collision-Synchronized-v2.11.0.zip`, or update to `Vanilla-Plus-Megapack-v8.zip`. Keep Bingus Shared Loader v12 or newer for the megapack. Purge / Deploy, then launch normally.
-2. If both standalone and megapack are enabled, give the updated package winning priority over older copies. Check the first line of `%LOCALAPPDATA%/CorpseCollisionRepair.log` says `v2.11.0` and the performance log says `schema=2`.
-3. Join another player's mission and play through a busy fight, including large enemy deaths. Profiling starts automatically; the separate corpse tracker is not required. Avoid running the detailed tracker during a performance comparison because it adds its own read overhead.
-4. After the busy section, copy `%LOCALAPPDATA%/EnemyCollisionSynchronized-Performance.log`. Copy `%LOCALAPPDATA%/CorpseCollisionRepair.log` too, and note the observed FPS, whether you were host/client, and whether corpse behavior was normal.
+1. Close the game. Replace the old standalone package with `Enemy-Collision-Synchronized-v2.12.0.zip`, or update Vanilla Plus Megapack. Use Bingus Shared Loader v18 or newer (v19 is current). Purge / Deploy, then launch normally.
+2. If both standalone and megapack are enabled, give the updated package winning priority over older copies. Check the first line of `%LOCALAPPDATA%/CowboyBingus/Helldivers2/Logs/CorpseCollisionRepair.log` says `v2.12.0` and the performance log says `schema=2`.
+3. Join another player's mission and play through a busy fight, including large enemy deaths. Profiling is off by default: it runs only in a diagnostic setup that sets `CowboyBingusDiagnostics = true` before the mod initializes, which also rewrites the status log every 2 s during play. The separate corpse tracker is not required. Avoid running the detailed tracker during a performance comparison because it adds its own read overhead.
+4. After the busy section, copy `%LOCALAPPDATA%/CowboyBingus/Helldivers2/Logs/EnemyCollisionSynchronized-Performance.log`. Copy `CorpseCollisionRepair.log` from the same folder too, and note the observed FPS, whether you were host/client, and whether corpse behavior was normal.
 
-The performance log is bounded, refreshed at most once every ten seconds and flushed on a normal shutdown. It retains launch totals and the eight worst polls, plus statistics since the last successful write. Copy it soon after a slowdown to preserve the recent window; save a copy before relaunching, because a new game process replaces the file. No hotkeys or extra configuration are required. The performance log contains no player/account information, entity pointers or positions. It is not a complete gameplay recording.
+The performance log is bounded, refreshed at most once every ten seconds and flushed on a normal shutdown. It retains launch totals and the eight worst polls, plus statistics since the last successful write. Copy it soon after a slowdown to preserve the recent window; save a copy before relaunching, because a new game process replaces the file. No hotkeys are required. The performance log contains no player/account information, entity pointers or positions. It is not a complete gameplay recording.
 
 For a useful FPS comparison, repeat a similar client mission with the mod disabled and enabled. Enemy counts, host and map should be as similar as practical. A single mission cannot establish a guaranteed FPS improvement.
 

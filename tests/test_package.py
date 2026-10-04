@@ -30,6 +30,9 @@ with zipfile.ZipFile(sys.argv[1]) as package:
     assert manifest['performance']['metadata_cache_lifetime'] == 'current_poll_only'
     assert manifest['performance']['corpse_poll_cadence_changed'] is False
     assert manifest['performance']['profiler_schema'] == 2 and manifest['performance']['slow_poll_records'] == 8
+    assert manifest['performance']['profiler_enabled_default'] is False
+    assert manifest['performance']['routine_logs_enabled_default'] is False
+    assert manifest['performance']['diagnostics_switch'] == 'CowboyBingusDiagnostics = true before initialization'
     assert manifest['performance']['detail_sample_every_polls'] == 30
     assert manifest['performance']['soft_poll_budget_ms'] == 1
     assert manifest['performance']['entity_headers_per_poll'] == 128
