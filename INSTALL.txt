@@ -1,6 +1,6 @@
-Release for Steam build 25480438 / EXE 1.8.46015.0. Offline checks passed; checked in live play.
+Release for Steam build 25480438 / EXE 1.8.46015.0. Offline checks passed.
 
-v2.12.0: fewer memory reads, no Lua garbage while idle, and a pause instead of a stop after errors elsewhere in the update chain.
+v2.13.0: waits for work, re-checks corpses that need no correction less often, and a settled ragdoll's motion check makes no Lua tables.
 
 Requires Bingus Shared Loader v18 or newer (v19 is current).
 
@@ -8,7 +8,7 @@ Logs: %LOCALAPPDATA%/CowboyBingus/Helldivers2/Logs
 
 
 
-Enemy Collision Synchronized - v2.12.0
+Enemy Collision Synchronized - v2.13.0
 
 
 
@@ -22,7 +22,7 @@ renewed ragdoll movement that can occur in vanilla.
 
 2. Replace the previous Corpse Collision Repair / Enemy Collision Synchronized
 
-   entry with Enemy-Collision-Synchronized-v2.12.0.zip.
+   entry with Enemy-Collision-Synchronized-v2.13.0.zip.
 
 3. Import and enable Bingus Shared Loader (v18 or newer) and this mod.
 
@@ -66,7 +66,7 @@ The first log reports recent and cumulative mod costs, the slowest polls,
 
 and costs by enemy/lifecycle, refreshed every ten seconds. Check it starts
 
-with v2.12.0 and schema=2. Work per update remains limited; heavily crowded
+with v2.13.0 and schema=2. Work per update remains limited; heavily crowded
 
 scenes can delay corpse checks. Repair behavior is unchanged from v2.7
 

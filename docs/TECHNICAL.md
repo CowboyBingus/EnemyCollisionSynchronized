@@ -1,6 +1,6 @@
 # Enemy Collision Synchronized — technical notes
 
-**Release: v2.12.0, for Steam build 25480438; see the [changelog](../CHANGELOG.md).** v2.9 reduced snapshot allocations and repeated metadata decoding while preserving v2.7 scheduling, validation and repair/containment policy. See [measurements and client test instructions](PERFORMANCE.md). Coverage remains **21 compatible large-entity resources across Terminids, Automatons and Illuminate**. [Install and test](../INSTALL.txt). [Asset investigation and coverage](../../docs/CORPSE_MVP_V25_FACTIONS_2026-09-15.md).
+**Release: v2.13.0, for Steam build 25480438; see the [changelog](../CHANGELOG.md).** v2.9 reduced snapshot allocations and repeated metadata decoding while preserving v2.7 scheduling, validation and repair/containment policy. See [measurements and client test instructions](PERFORMANCE.md). Coverage remains **21 compatible large-entity resources across Terminids, Automatons and Illuminate**. [Install and test](../INSTALL.txt). [Asset investigation and coverage](../../docs/CORPSE_MVP_V25_FACTIONS_2026-09-15.md).
 
 | Faction | Included asset families and variants |
 |---|---|
@@ -26,41 +26,51 @@ Eligible auxiliary static colliders follow their authored skeleton nodes through
 
 ## Snapshot steps
 
-`M.snapshot` (`src/corpse_data.lua`) reads the game in named steps, each of cognitive complexity 15 or less. `scan_poll` checks the mission mode and alternates which manager goes first. `scan_manager` reads a manager's header and bounds, then `scan_entities` walks its entries from a rotating cursor within the poll's budget. `visit` reads an entry's header and, for a listed resource, the cheap lifecycle check. `inspect_listed` runs `inspect` in `pcall`, so a failed read or check skips only that unit, and hands a complete unit to `consume` after the manager's globals are checked again. `inspect` builds the unit from `new_unit`, `ragdoll_runtime`, `skeleton`, `actor_handles` and one `inspect_actor` per actor (`actor_row`, `actor_body`, `count_main_body`, `actionable`, `poses`).
+`M.snapshot` (`src/corpse_data.lua`) reads the game in named steps, each of cognitive complexity 15 or less. `scan_poll` checks the mission mode and alternates which manager goes first. `scan_manager` reads a manager's header, bounds and pointer array, and rebuilds the manager's listing (`relist`) only when the array differs from the last poll's; `scan_entities` then walks the listed entries from a rotating cursor within the poll's budget. `visit` runs the cheap lifecycle check and, for an eligible entry, reads its header afresh before inspection. `inspect_listed` runs `inspect` in `pcall`, so a failed read or check skips only that unit, and hands a complete unit to `consume` after the manager's globals are checked again. `inspect` builds the unit from `new_unit`, `ragdoll_runtime`, `skeleton`, `actor_handles` and one `inspect_actor` per actor (`actor_row`, `actor_body`, `count_main_body`, `actionable`, `poses`).
 
-The steps share the poll's values (api, state, budget, mission mode, current manager) through upvalues that are set in the same poll before any step reads them. No address or copied byte survives into the next poll's decisions. The steps make the same native commands and results as the single function they replaced, and no closure per inspected unit.
+The steps share the poll's values (api, state, budget, mission mode, current manager) through upvalues that are set in the same poll before any step reads them. No copied byte survives into the next poll's decisions. Two records do survive, as hints for where to look and never as data to act on:
+
+- **The listing** (`state.listings`, per manager): which entity addresses hold a listed resource, kept as numbers. Only addresses not seen before cost a header view (at most `M.max_entities` per poll). Because an entity can be freed and another allocated at the same address with the array unchanged, a rolling verification re-reads ceil(count/16) headers of the manager scanned first in each poll, so every entry is checked again within 32 polls. A header that no longer matches is skipped and classified afresh.
+- **The corpse re-check backoff** (`state.corpse_checks`, by unit handle with its entity address and id): a corpse whose inspection needed no command for `M.corpse_settle_polls` = 24 polls is inspected again after 2, 4, 8 ... polls, at most `M.corpse_recheck_polls` = 64 (about 3-4 s). A command, or a new entity at that unit, starts it over; records are forgotten at mission exit and after 256 polls unseen. Recordings show no settled corpse collider moving again after the conversion-time repair. Ragdolls are not affected.
+
+Every command still depends only on guards read in that poll. Apart from the backoff's schedule, the steps make the same native commands and results as the single function they replaced, and no closure per inspected unit.
 
 ## Per-poll cost
 
-Each memory read and view is one `ReadProcessMemory` (about 1-2 us each in the game); the clock is one `QueryPerformanceCounter`, whose in-game cost is unmeasured. The mod makes no `VirtualQuery` call during play. Counts per poll, pinned by `tests/test_performance.lua` in its synthetic scene (Bile Titan layout):
+Each memory read and view is one `ReadProcessMemory` (about 1-2 us each in the game); the clock is one `QueryPerformanceCounter` and the time one `GetTickCount64`. The mod makes no `VirtualQuery` call during play. Counts per poll, pinned by `tests/test_performance.lua` in its synthetic scene (Bile Titan layout):
 
-| Poll | Reads + views | Clock |
-| --- | --- | --- |
-| Outside a mission | 1 | 1 |
-| On the ship | 2 | 1 |
-| Idle in a mission | 9 | 1 |
-| Eight living enemies | 10 + 9 | 1 |
-| One settled corpse inspected | 25 + 82 | 1 |
-| One settled remote ragdoll inspected | 28 + 100 | 1 |
-| One corpse realignment | 25 + 95 | 1 |
+| Poll | Reads + views | Clock | Time |
+| --- | --- | --- | --- |
+| Outside a mission | 0 + 1 | 0 | 0 |
+| On the ship | 1 + 1 | 0 | 0 |
+| Idle in a mission | 3 + 1 | 0 | 0 |
+| Eight living enemies, first seen | 4 + 10 | 0 | 0 |
+| Eight living enemies, afterwards | 4 + 3 | 0 | 0 |
+| A settled corpse waiting for its re-check | 4 + 1 | 0 | 0 |
+| One settled corpse inspected | 22 + 84 | 1 | 1 |
+| One settled remote ragdoll inspected | 25 + 101 | 1 | 1 |
+| One corpse realignment | 22 + 97 | 1 | 1 |
 
-- The physics-getter preflight (3 reads) runs only in a mission, after the mission check.
-- Each scanned entry's 24-byte header is one view; a string is made only for a listed resource. The sync counts of up to 16 listed entries come from one view at the array's 432-byte stride, copied into numbers; the copy is discarded after every inspection, so a count is never older than the last native command.
-- The deadline clock is read every 8 scanned entries and after every inspection, not before every entry; a deadline seen in one manager also ends the other's scan. The 1 ms deadline stays soft.
+- Polls follow the frame time the game passes to `update`, one every 3/64 s of it: the period the old 1/30 s interval had on `GetTickCount64`, which advances in 15.625 ms steps. A frame without a poll makes no Windows call. The time is read only when a unit is inspected or a cooldown or motion history may expire.
+- The mode slot and both manager slots lie within 0x2b0 bytes of game.dll's data: one view copies all three, and a slot is compared as two words with the last poll's.
+- The physics-getter preflight (3 reads) runs before a poll's first inspection; a poll that inspects nothing makes none of it.
+- An entry's 24-byte header is one view, read for an address not seen before, by the rolling verification and before an inspection; a string is made only for a listed resource. The sync counts of up to 16 listed entries come from one view at the array's 432-byte stride, copied into numbers; the copy is discarded after every inspection, so a count is never older than the last native command.
+- The deadline clock is first read by the poll's first inspection, then every 8 scanned listed entries and after every inspection, not before every entry; a deadline seen in one manager also ends the other's scan. The 1 ms deadline stays soft.
 - An inspection reads each enabled actor's 160-byte body through a view; only main bodies and bodies with a pending command become strings. Actor rows copied 16 at a time are decoded in place.
 - The guards an inspection verified (and the manager globals verified right after it) are not compared again before the unit's first native command or its motion sample: no native call runs in between. Every native command after the first compares the unit's guards afresh, and each command still verifies its actor's own guards right before it. A unit's root pose guard is one of its main pose guards and is not compared twice.
 - Pose floats are decoded from bytes by arithmetic: a NaN becomes Lua's own NaN, which the finiteness checks reject.
+- A remote ragdoll's motion sample writes the root's pose and each main body's pose relative to it into tables kept for the session, and history copies them only when it starts or restarts: a sample makes no table (about 5.8 KB per 15-body sample before, interpreted).
 
-A settled corpse's cost is dominated by its enabled bodies (69 views in the scene): each is needed to compare its pose with its node. No layout is kept across polls.
+A settled corpse's cost is dominated by its enabled bodies (69 views in the scene): each is needed to compare its pose with its node. No layout is kept across polls; once the corpse has settled, the re-check backoff spaces these inspections 2, 4 ... up to 64 polls apart while it needs no correction.
 
-Machine code: before the split, nothing outside the per-unit inspection compiled in the game's LuaJIT (`begin_snapshot`'s `pairs()` and the creation of the per-unit closure aborted every trace through it). Those steps therefore stay interpreted with `jit.off`, and the inspection steps compile as the closure's body did. `tests/test_performance.lua` pins the garbage per poll in every budget scenario, interpreted and compiled.
+Machine code: before the split, nothing outside the per-unit inspection compiled in the game's LuaJIT (`begin_snapshot`'s `pairs()` and the creation of the per-unit closure aborted every trace through it). Those steps therefore stay interpreted with `jit.off`, and the inspection steps compile as the closure's body did. The listing and slot steps are `jit.off` too, and so are the loader's per-frame hooks (`step`, `after`, `check`, `due`), so a trace cannot follow their returns into the update wrappers below this mod. `tests/test_performance.lua` pins the garbage per poll in every budget scenario, interpreted and compiled.
 
 ## Update chain and errors
 
 The loader (`src/archive_loader.lua`) installs the game's `update` and `shutdown` chain through `runtime.guard` from Bingus Shared Runtime v1, vendored as `src/bingus_runtime.lua` with `src/bingus_memory.lua` (this mod writes no game memory directly, so it does not vendor `bingus_write.lua`). The build check takes the executable and game.dll hashes from the runtime's per-session cache.
 
 - The previous update runs outside `pcall`, so its errors reach the game unchanged. A failed update below the mod (vanilla or a mod loaded earlier) is seen on the next frame.
-- The mod then pauses. It does not poll, so it sends no native command. It forgets every unit, motion history, stop, scan position and cooldown (`M.reset`, the same reset as leaving a mission) and reports `paused_after_update_error` once. Once the updates below have returned on 60 frames in a row, it reports `resumed_after_60_clean_frames` and polls afresh. More errors below while it is paused restart those 60 frames.
+- The mod then pauses. It does not poll, so it sends no native command. It forgets every unit, motion history, stop, scan position, cooldown, listing and re-check record (`M.reset`, the same reset as leaving a mission) and reports `paused_after_update_error` once. Once the updates below have returned on 60 frames in a row, it reports `resumed_after_60_clean_frames` and polls afresh. More errors below while it is paused restart those 60 frames.
 - Eight errors below in one burst stop the mod for the session. A burst ends after 3600 frames whose update below returned, so rare errors never add up to a stop.
 - Other errors in the mod's own frame reach the guard, which logs the first of each burst once; eight in one burst stop the mod.
 - **Exception: the mod's own raised polls are counted in a row, not in bursts.** The loader runs each poll in its own `pcall`; a poll that raises is retried on the next poll. A successful poll resets the count, and 8 raised polls in a row stop the mod.
@@ -80,7 +90,7 @@ This is an active gameplay candidate with no dry-run mode. Legitimate late distu
 
 ## Build and testing
 
-Python 3.10+ and the project's Windows x64 LuaJIT build are required. Set `HD2_LUAJIT`, then run `python -B scripts/build.py` from this directory. `HD2_GAME_ROOT` overrides the default Steam installation. The builder checks executable fingerprints, runs the gameplay and performance regressions, compiles one Lua resource and creates the root `releases/Enemy-Collision-Synchronized-v2.12.0.zip`; it never installs or launches the game.
+Python 3.10+ and the project's Windows x64 LuaJIT build are required. Set `HD2_LUAJIT`, then run `python -B scripts/build.py` from this directory. `HD2_GAME_ROOT` overrides the default Steam installation. The builder checks executable fingerprints, runs the gameplay and performance regressions, compiles one Lua resource and creates the root `releases/Enemy-Collision-Synchronized-v2.13.0.zip`; it never installs or launches the game.
 
 The checked-in [catalog](../profiles/catalog.json) generates the allowlist, `src/corpse_profiles.lua`: data only, never edited by hand. `src/corpse_data.lua` holds the logic and takes the allowlist as its chunk argument; `scripts/module.py` embeds the profiles before it and passes them in, and `tests/test_module.lua` runs the built wrapper. After an evidence-backed catalog edit, run `python -B scripts/generate_profiles.py`; the build rejects a stale generated file and a module that would not embed every file in `src/`. Skeleton variants repeat their lists in the generated file, so each profile line carries an R14 `lint-ok` marker written by the generator. Synthetic reader and policy tests exercise all 21 layouts, disabled landing bodies, static corpse filters, native stop/readback, completion and rejection paths. Existing recorded Titan/Impaler replays remain required gates. Synthetic native calls are stubs and do not prove in-game physics outcomes.
 

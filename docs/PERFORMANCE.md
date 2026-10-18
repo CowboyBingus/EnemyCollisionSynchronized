@@ -1,4 +1,4 @@
-# Performance investigation and profiling — v2.12.0
+# Performance investigation and profiling — v2.13.0
 
 Players report substantial improvement from v2.7 but some residual performance impact. v2.8 expands the evidence collected during gameplay; it does not change repair policy or claim an additional FPS improvement.
 
@@ -22,10 +22,14 @@ No cross-poll address cache or reduced inspection frequency was introduced. Exis
 
 The disappearing-parts report remains a separate unresolved investigation; this version does not claim to fix it. See the workspace optimization report for equal-work benchmark results. Those results measure mod work in synthetic scenes, not game FPS.
 
+## v2.13.0 waiting for work
+
+Polls follow the frame time instead of a clock call, and an idle poll makes no clock call at all. One view copies the mission mode slot and both manager slots. Each manager's listing of entries that hold a listed resource is kept across polls and rebuilt only when its pointer array changes, with a rolling re-check of a few entry headers per poll, so an idle poll no longer reads every enemy's header. The physics-getter preflight waits for the poll's first inspection. A corpse that needed no correction for about a second is re-checked after 2, 4, 8 ... polls, at most 64 (about 3-4 s); a correction starts it over. Ragdoll sampling, work limits, thresholds, guards and native actions are unchanged. Measured in game: 0.036-0.047 to 0.021-0.022 ms per frame in missions, and 0.099 to 0.025 under heavy load (solo missions without enemy deaths; the corpse re-check's saving is not yet measured in play). See [technical notes](TECHNICAL.md#per-poll-cost) for the per-poll counts.
+
 ## Capture a client test
 
-1. Close the game. Replace the old standalone package with `Enemy-Collision-Synchronized-v2.12.0.zip`, or update Vanilla Plus Megapack. Use Bingus Shared Loader v18 or newer (v19 is current). Purge / Deploy, then launch normally.
-2. If both standalone and megapack are enabled, give the updated package winning priority over older copies. Check the first line of `%LOCALAPPDATA%/CowboyBingus/Helldivers2/Logs/CorpseCollisionRepair.log` says `v2.12.0` and the performance log says `schema=2`.
+1. Close the game. Replace the old standalone package with `Enemy-Collision-Synchronized-v2.13.0.zip`, or update Vanilla Plus Megapack. Use Bingus Shared Loader v18 or newer (v19 is current). Purge / Deploy, then launch normally.
+2. If both standalone and megapack are enabled, give the updated package winning priority over older copies. Check the first line of `%LOCALAPPDATA%/CowboyBingus/Helldivers2/Logs/CorpseCollisionRepair.log` says `v2.13.0` and the performance log says `schema=2`.
 3. Join another player's mission and play through a busy fight, including large enemy deaths. Profiling is off by default: it runs only in a diagnostic setup that sets `CowboyBingusDiagnostics = true` before the mod initializes, which also rewrites the status log every 2 s during play. The separate corpse tracker is not required. Avoid running the detailed tracker during a performance comparison because it adds its own read overhead.
 4. After the busy section, copy `%LOCALAPPDATA%/CowboyBingus/Helldivers2/Logs/EnemyCollisionSynchronized-Performance.log`. Copy `CorpseCollisionRepair.log` from the same folder too, and note the observed FPS, whether you were host/client, and whether corpse behavior was normal.
 

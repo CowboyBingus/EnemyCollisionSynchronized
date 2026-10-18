@@ -1,3 +1,8 @@
+# v2.13.0
+
+- A poll with nothing to inspect no longer re-reads every enemy or the clock, and a corpse that has needed no correction for about a second is re-checked progressively less often (at most 3-4 s apart) instead of on every visit. Measured in game: 0.036-0.047 to 0.021-0.022 ms per frame in missions, and 0.099 to 0.025 under heavy load.
+- A settled ragdoll's motion check no longer makes Lua tables, with the same results: inspecting one allocates less Lua memory per poll (synthetic scene: 36.9 to 31.0 KB, and 33.4 to 29.5 KB in compiled code).
+
 # v2.12.0
 
 - Errors from the game's update and shutdown, or from other mods, now reach the game unchanged with their original traceback, so they no longer look like errors in this mod.

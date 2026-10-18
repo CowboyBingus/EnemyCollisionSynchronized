@@ -1,8 +1,2 @@
-- Polls on the ship, outside a mission and in a mission with nothing to inspect no longer allocate Lua memory, and make 1-2 memory reads instead of 4-5.
-- Scanning living enemies and inspecting corpses and ragdolls take fewer memory reads and less Lua memory, with the same checks and results.
-- Errors from the game or from other mods now reach the game unchanged instead of looking like errors in this mod.
-- After such an error the mod pauses, forgets what it was tracking and resumes once 60 updates in a row succeed.
-- Performance profiling and the frequent status log run again only when diagnostics are turned on.
-- Another mod's Windows declarations can no longer stop this mod's memory reader from starting.
-- Requires Bingus Shared Loader v18 or newer.
-- Measured in live play: 0.067 ms per frame in client missions (0.188 in the previous session, which had more ragdolls) and 0.004 on the ship.
+- A poll with nothing to inspect no longer re-reads every enemy or the clock, and a corpse that has needed no correction for about a second is re-checked progressively less often (at most 3-4 s apart) instead of on every visit. Measured in game: 0.036-0.047 to 0.021-0.022 ms per frame in missions, and 0.099 to 0.025 under heavy load.
+- A settled ragdoll's motion check no longer makes Lua tables, with the same results: inspecting one allocates less Lua memory per poll (synthetic scene: 36.9 to 31.0 KB, and 33.4 to 29.5 KB in compiled code).
