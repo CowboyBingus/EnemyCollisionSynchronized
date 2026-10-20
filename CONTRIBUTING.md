@@ -8,4 +8,4 @@ Run `python -B scripts/build.py`. The builder verifies the local game fingerprin
 
 Private recorded-session replays are intentionally excluded from public source. The published tests use synthetic identities and geometry; offline checks do not establish live gameplay outcomes. Build outputs and local game/compiler inputs must remain untracked.
 
-See [publication privacy](docs/PRIVACY.md) for the source inventory and release audit. No repository-wide license has been selected.
+See [publication privacy](docs/PRIVACY.md) for the source inventory and release audit. This repository is licensed under the BSD Zero Clause License (0BSD); see LICENSE.
